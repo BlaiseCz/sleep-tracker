@@ -45,7 +45,7 @@ func (r *sleepLogRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain
 func (r *sleepLogRepository) List(ctx context.Context, userID uuid.UUID, filter domain.SleepLogFilter) ([]domain.SleepLog, error) {
 	query := r.db.WithContext(ctx).
 		Where("user_id = ?", userID).
-		Order("start_at DESC")
+		Order("start_at DESC, id DESC")
 
 	// Apply time filters
 	if filter.From != nil {
@@ -92,11 +92,8 @@ func (r *sleepLogRepository) HasOverlap(ctx context.Context, userID uuid.UUID, s
 
 	// CORE can't overlap with CORE
 	// NAP can't overlap with CORE (but can overlap with NAP)
-	if sleepType == domain.SleepTypeCore {
-		query = query.Where("type = ?", domain.SleepTypeCore)
-	} else {
-		query = query.Where("type = ?", domain.SleepTypeCore)
-	}
+	query = query.Where("type = ?", domain.SleepTypeCore)
+
 
 	var count int64
 	if err := query.Count(&count).Error; err != nil {
