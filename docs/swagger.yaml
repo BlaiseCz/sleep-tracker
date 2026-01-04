@@ -1,0 +1,279 @@
+basePath: /v1
+definitions:
+  github_com_blaisecz_sleep-tracker_internal_domain.CreateSleepLogRequest:
+    properties:
+      client_request_id:
+        maxLength: 255
+        type: string
+      end_at:
+        type: string
+      quality:
+        maximum: 10
+        minimum: 1
+        type: integer
+      start_at:
+        type: string
+      type:
+        allOf:
+        - $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepType'
+        enum:
+        - CORE
+        - NAP
+    required:
+    - end_at
+    - quality
+    - start_at
+    - type
+    type: object
+  github_com_blaisecz_sleep-tracker_internal_domain.CreateUserRequest:
+    properties:
+      timezone:
+        type: string
+    required:
+    - timezone
+    type: object
+  github_com_blaisecz_sleep-tracker_internal_domain.PaginationResponse:
+    properties:
+      has_more:
+        type: boolean
+      next_cursor:
+        type: string
+    type: object
+  github_com_blaisecz_sleep-tracker_internal_domain.SleepLogListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepLogResponse'
+        type: array
+      pagination:
+        $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.PaginationResponse'
+    type: object
+  github_com_blaisecz_sleep-tracker_internal_domain.SleepLogResponse:
+    properties:
+      client_request_id:
+        type: string
+      created_at:
+        type: string
+      end_at:
+        type: string
+      id:
+        type: string
+      quality:
+        type: integer
+      start_at:
+        type: string
+      type:
+        $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepType'
+      user_id:
+        type: string
+    type: object
+  github_com_blaisecz_sleep-tracker_internal_domain.SleepType:
+    enum:
+    - CORE
+    - NAP
+    type: string
+    x-enum-varnames:
+    - SleepTypeCore
+    - SleepTypeNap
+  github_com_blaisecz_sleep-tracker_internal_domain.UserResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      timezone:
+        type: string
+    type: object
+  github_com_blaisecz_sleep-tracker_pkg_problem.FieldError:
+    properties:
+      field:
+        type: string
+      message:
+        type: string
+    type: object
+  github_com_blaisecz_sleep-tracker_pkg_problem.Problem:
+    properties:
+      detail:
+        type: string
+      errors:
+        items:
+          $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.FieldError'
+        type: array
+      status:
+        type: integer
+      title:
+        type: string
+      type:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: API for tracking sleep patterns and quality
+  title: Sleep Tracker API
+  version: "1.0"
+paths:
+  /users:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user with timezone preference
+      parameters:
+      - description: User creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.UserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+      summary: Create a new user
+      tags:
+      - users
+  /users/{userId}:
+    get:
+      description: Get a user's details by their UUID
+      parameters:
+      - description: User ID
+        format: uuid
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.UserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+      summary: Get user by ID
+      tags:
+      - users
+  /users/{userId}/sleep-logs:
+    get:
+      description: Get paginated sleep logs for a user with optional date filtering
+      parameters:
+      - description: User ID
+        format: uuid
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Filter logs starting from this time
+        format: date-time
+        in: query
+        name: from
+        type: string
+      - description: Filter logs up to this time
+        format: date-time
+        in: query
+        name: to
+        type: string
+      - default: 20
+        description: Number of results per page
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        type: integer
+      - description: Pagination cursor from previous response
+        in: query
+        name: cursor
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepLogListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+      summary: List sleep logs
+      tags:
+      - sleep-logs
+    post:
+      consumes:
+      - application/json
+      description: Record a new sleep session for a user. Supports idempotency via
+        client_request_id.
+      parameters:
+      - description: User ID
+        format: uuid
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Sleep log creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.CreateSleepLogRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returned existing sleep log (idempotent)
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepLogResponse'
+        "201":
+          description: Created new sleep log
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepLogResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+        "409":
+          description: Overlapping sleep period
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+      summary: Create a sleep log
+      tags:
+      - sleep-logs
+swagger: "2.0"

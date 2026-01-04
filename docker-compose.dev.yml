@@ -1,0 +1,26 @@
+version: "3.9"
+
+# Development overrides - use with: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dev
+    volumes:
+      - .:/app
+      - go_mod_cache:/go/pkg/mod
+    environment:
+      - LOG_LEVEL=debug
+      - SEED=true
+    ports:
+      - "8080:8080"
+      - "2345:2345"  # Delve debugger
+
+  postgres:
+    ports:
+      - "5432:5432"
+
+volumes:
+  go_mod_cache:
+    driver: local

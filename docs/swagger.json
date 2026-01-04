@@ -1,0 +1,417 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "API for tracking sleep patterns and quality",
+        "title": "Sleep Tracker API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/v1",
+    "paths": {
+        "/users": {
+            "post": {
+                "description": "Create a new user with timezone preference",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Create a new user",
+                "parameters": [
+                    {
+                        "description": "User creation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.CreateUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.UserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{userId}": {
+            "get": {
+                "description": "Get a user's details by their UUID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get user by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.UserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{userId}/sleep-logs": {
+            "get": {
+                "description": "Get paginated sleep logs for a user with optional date filtering",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sleep-logs"
+                ],
+                "summary": "List sleep logs",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Filter logs starting from this time",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Filter logs up to this time",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Number of results per page",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pagination cursor from previous response",
+                        "name": "cursor",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepLogListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Record a new sleep session for a user. Supports idempotency via client_request_id.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sleep-logs"
+                ],
+                "summary": "Create a sleep log",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Sleep log creation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.CreateSleepLogRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returned existing sleep log (idempotent)",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepLogResponse"
+                        }
+                    },
+                    "201": {
+                        "description": "Created new sleep log",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepLogResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    },
+                    "409": {
+                        "description": "Overlapping sleep period",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "github_com_blaisecz_sleep-tracker_internal_domain.CreateSleepLogRequest": {
+            "type": "object",
+            "required": [
+                "end_at",
+                "quality",
+                "start_at",
+                "type"
+            ],
+            "properties": {
+                "client_request_id": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "end_at": {
+                    "type": "string"
+                },
+                "quality": {
+                    "type": "integer",
+                    "maximum": 10,
+                    "minimum": 1
+                },
+                "start_at": {
+                    "type": "string"
+                },
+                "type": {
+                    "enum": [
+                        "CORE",
+                        "NAP"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepType"
+                        }
+                    ]
+                }
+            }
+        },
+        "github_com_blaisecz_sleep-tracker_internal_domain.CreateUserRequest": {
+            "type": "object",
+            "required": [
+                "timezone"
+            ],
+            "properties": {
+                "timezone": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_blaisecz_sleep-tracker_internal_domain.PaginationResponse": {
+            "type": "object",
+            "properties": {
+                "has_more": {
+                    "type": "boolean"
+                },
+                "next_cursor": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_blaisecz_sleep-tracker_internal_domain.SleepLogListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepLogResponse"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.PaginationResponse"
+                }
+            }
+        },
+        "github_com_blaisecz_sleep-tracker_internal_domain.SleepLogResponse": {
+            "type": "object",
+            "properties": {
+                "client_request_id": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "end_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "quality": {
+                    "type": "integer"
+                },
+                "start_at": {
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepType"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_blaisecz_sleep-tracker_internal_domain.SleepType": {
+            "type": "string",
+            "enum": [
+                "CORE",
+                "NAP"
+            ],
+            "x-enum-varnames": [
+                "SleepTypeCore",
+                "SleepTypeNap"
+            ]
+        },
+        "github_com_blaisecz_sleep-tracker_internal_domain.UserResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_blaisecz_sleep-tracker_pkg_problem.FieldError": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_blaisecz_sleep-tracker_pkg_problem.Problem": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.FieldError"
+                    }
+                },
+                "status": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}
