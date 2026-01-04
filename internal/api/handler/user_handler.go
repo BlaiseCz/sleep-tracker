@@ -16,7 +16,6 @@ import (
 // @title Sleep Tracker API
 // @version 1.0
 // @description API for tracking sleep patterns and quality
-// @host localhost:8080
 // @BasePath /v1
 
 type UserHandler struct {
