@@ -85,8 +85,8 @@ func (h *SleepLogHandler) Create(w http.ResponseWriter, r *http.Request) {
 // @Tags sleep-logs
 // @Produce json
 // @Param userId path string true "User UUID" format(uuid) example(550e8400-e29b-41d4-a716-446655440000)
-// @Param from query string false "Start of date range (RFC3339)" format(date-time) example(2024-01-01T00:00:00Z)
-// @Param to query string false "End of date range (RFC3339)" format(date-time) example(2024-01-31T23:59:59Z)
+// @Param from query string false "Start of date range (RFC3339, UTC recommended for consistent filtering)" format(date-time) example(2024-01-01T00:00:00Z)
+// @Param to query string false "End of date range (RFC3339, UTC recommended for consistent filtering)" format(date-time) example(2024-01-31T23:59:59Z)
 // @Param limit query integer false "Results per page (1-100)" default(20) minimum(1) maximum(100)
 // @Param cursor query string false "Cursor from previous response's next_cursor"
 // @Success 200 {object} domain.SleepLogListResponse "Sleep logs with pagination"
