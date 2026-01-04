@@ -8,51 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// MockUserRepository is a mock implementation of UserRepository
-type MockUserRepository struct {
-	users  map[uuid.UUID]*domain.User
-	err    error
-}
-
-func NewMockUserRepository() *MockUserRepository {
-	return &MockUserRepository{
-		users: make(map[uuid.UUID]*domain.User),
-	}
-}
-
-func (m *MockUserRepository) Create(ctx context.Context, user *domain.User) error {
-	if m.err != nil {
-		return m.err
-	}
-	if user.ID == uuid.Nil {
-		user.ID = uuid.New()
-	}
-	m.users[user.ID] = user
-	return nil
-}
-
-func (m *MockUserRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
-	if m.err != nil {
-		return nil, m.err
-	}
-	user, ok := m.users[id]
-	if !ok {
-		return nil, domain.ErrNotFound
-	}
-	return user, nil
-}
-
-func (m *MockUserRepository) Exists(ctx context.Context, id uuid.UUID) (bool, error) {
-	if m.err != nil {
-		return false, m.err
-	}
-	_, ok := m.users[id]
-	return ok, nil
-}
-
-func (m *MockUserRepository) SetError(err error) {
-	m.err = err
-}
+// Mocks are defined in mocks_test.go
 
 func TestUserService_Create(t *testing.T) {
 	tests := []struct {

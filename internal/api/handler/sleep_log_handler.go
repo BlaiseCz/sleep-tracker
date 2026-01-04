@@ -121,6 +121,67 @@ func (h *SleepLogHandler) List(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+// Update handles PUT /v1/users/{userId}/sleep-logs/{logId}
+// @Summary Update sleep log
+// @Description Update an existing sleep session. All fields are optional - only provided fields will be updated.
+// @Tags sleep-logs
+// @Accept json
+// @Produce json
+// @Param userId path string true "User UUID" format(uuid) example(550e8400-e29b-41d4-a716-446655440000)
+// @Param logId path string true "Sleep Log UUID" format(uuid) example(660e8400-e29b-41d4-a716-446655440001)
+// @Param request body domain.UpdateSleepLogRequest true "Fields to update"
+// @Success 200 {object} domain.SleepLogResponse "Updated sleep log"
+// @Failure 400 {object} problem.Problem "Invalid request body or parameters"
+// @Failure 404 {object} problem.Problem "User or sleep log not found"
+// @Failure 409 {object} problem.Problem "Sleep period overlaps with existing log"
+// @Failure 500 {object} problem.Problem "Server error"
+// @Router /users/{userId}/sleep-logs/{logId} [put]
+func (h *SleepLogHandler) Update(w http.ResponseWriter, r *http.Request) {
+	userID, err := uuid.Parse(chi.URLParam(r, "userId"))
+	if err != nil {
+		problem.BadRequest("Invalid user ID format").Write(w)
+		return
+	}
+
+	logID, err := uuid.Parse(chi.URLParam(r, "logId"))
+	if err != nil {
+		problem.BadRequest("Invalid sleep log ID format").Write(w)
+		return
+	}
+
+	var req domain.UpdateSleepLogRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		problem.BadRequest("Invalid JSON body").Write(w)
+		return
+	}
+
+	if fieldErrors := validation.Validate(req); fieldErrors != nil {
+		problem.ValidationError("Request body contains invalid fields", fieldErrors).Write(w)
+		return
+	}
+
+	log, err := h.service.Update(r.Context(), userID, logID, &req)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			problem.NotFound("Sleep log not found").Write(w)
+			return
+		}
+		if errors.Is(err, domain.ErrOverlappingSleep) {
+			problem.Conflict("Overlapping sleep period detected").Write(w)
+			return
+		}
+		if errors.Is(err, domain.ErrInvalidInput) {
+			problem.BadRequest("End time must be after start time").Write(w)
+			return
+		}
+		problem.InternalError("Failed to update sleep log").Write(w)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(log.ToResponse())
+}
+
 func parseListFilter(r *http.Request) (domain.SleepLogFilter, []problem.FieldError) {
 	var filter domain.SleepLogFilter
 	var fieldErrors []problem.FieldError

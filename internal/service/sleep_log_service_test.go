@@ -9,94 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// MockSleepLogRepository is a mock implementation of SleepLogRepository
-type MockSleepLogRepository struct {
-	logs            map[uuid.UUID]*domain.SleepLog
-	clientRequestID map[string]*domain.SleepLog
-	err             error
-}
-
-func NewMockSleepLogRepository() *MockSleepLogRepository {
-	return &MockSleepLogRepository{
-		logs:            make(map[uuid.UUID]*domain.SleepLog),
-		clientRequestID: make(map[string]*domain.SleepLog),
-	}
-}
-
-func (m *MockSleepLogRepository) Create(ctx context.Context, log *domain.SleepLog) error {
-	if m.err != nil {
-		return m.err
-	}
-	if log.ID == uuid.Nil {
-		log.ID = uuid.New()
-	}
-	log.CreatedAt = time.Now()
-	m.logs[log.ID] = log
-	if log.ClientRequestID != nil {
-		key := log.UserID.String() + ":" + *log.ClientRequestID
-		m.clientRequestID[key] = log
-	}
-	return nil
-}
-
-func (m *MockSleepLogRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.SleepLog, error) {
-	if m.err != nil {
-		return nil, m.err
-	}
-	log, ok := m.logs[id]
-	if !ok {
-		return nil, domain.ErrNotFound
-	}
-	return log, nil
-}
-
-func (m *MockSleepLogRepository) List(ctx context.Context, userID uuid.UUID, filter domain.SleepLogFilter) ([]domain.SleepLog, error) {
-	if m.err != nil {
-		return nil, m.err
-	}
-	var result []domain.SleepLog
-	for _, log := range m.logs {
-		if log.UserID == userID {
-			result = append(result, *log)
-		}
-	}
-	return result, nil
-}
-
-func (m *MockSleepLogRepository) HasOverlap(ctx context.Context, userID uuid.UUID, startAt, endAt time.Time, sleepType domain.SleepType) (bool, error) {
-	if m.err != nil {
-		return false, m.err
-	}
-	for _, log := range m.logs {
-		if log.UserID != userID {
-			continue
-		}
-		// Check overlap: new period overlaps if start < existing.end AND end > existing.start
-		if startAt.Before(log.EndAt) && endAt.After(log.StartAt) {
-			// For CORE: overlaps with CORE
-			// For NAP: overlaps with CORE only
-			if log.Type == domain.SleepTypeCore {
-				return true, nil
-			}
-			if sleepType == domain.SleepTypeCore && log.Type == domain.SleepTypeCore {
-				return true, nil
-			}
-		}
-	}
-	return false, nil
-}
-
-func (m *MockSleepLogRepository) GetByClientRequestID(ctx context.Context, userID uuid.UUID, clientRequestID string) (*domain.SleepLog, error) {
-	if m.err != nil {
-		return nil, m.err
-	}
-	key := userID.String() + ":" + clientRequestID
-	log, ok := m.clientRequestID[key]
-	if !ok {
-		return nil, nil
-	}
-	return log, nil
-}
+// Mocks are defined in mocks_test.go
 
 func TestSleepLogService_Create(t *testing.T) {
 	userID := uuid.New()
@@ -223,9 +136,7 @@ func TestSleepLogService_Create_UserNotFound(t *testing.T) {
 	}
 }
 
-func strPtr(s string) *string {
-	return &s
-}
+// strPtr is defined in mocks_test.go
 
 // TestSleepLogService_Create_TravelScenario tests the Poznan → San Francisco travel scenario
 // where a user sleeps 11 hours after a long flight

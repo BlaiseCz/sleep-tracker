@@ -55,6 +55,7 @@ func (rt *Router) Setup() http.Handler {
 			r.Route("/{userId}/sleep-logs", func(r chi.Router) {
 				r.Post("/", rt.sleepLogHandler.Create)
 				r.Get("/", rt.sleepLogHandler.List)
+				r.Put("/{logId}", rt.sleepLogHandler.Update)
 			})
 		})
 	})

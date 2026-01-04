@@ -104,7 +104,7 @@ clean:
 
 # Generate Swagger documentation
 swagger:
-	swag init -g internal/api/handler/user_handler.go -o docs --parseDependency --parseInternal
+	swag init -g cmd/api/main.go -o docs --parseDependency --parseInternal
 
 swagger-install:
 	go install github.com/swaggo/swag/cmd/swag@latest

@@ -11,6 +11,7 @@ import (
 
 type SleepLogService interface {
 	Create(ctx context.Context, userID uuid.UUID, req *domain.CreateSleepLogRequest) (*domain.SleepLog, bool, error)
+	Update(ctx context.Context, userID uuid.UUID, logID uuid.UUID, req *domain.UpdateSleepLogRequest) (*domain.SleepLog, error)
 	List(ctx context.Context, userID uuid.UUID, filter domain.SleepLogFilter) (*domain.SleepLogListResponse, error)
 }
 
@@ -87,6 +88,67 @@ func (s *sleepLogService) Create(ctx context.Context, userID uuid.UUID, req *dom
 	}
 
 	return log, false, nil
+}
+
+// Update updates an existing sleep log
+func (s *sleepLogService) Update(ctx context.Context, userID uuid.UUID, logID uuid.UUID, req *domain.UpdateSleepLogRequest) (*domain.SleepLog, error) {
+	// Check if user exists
+	exists, err := s.userRepo.Exists(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, domain.ErrNotFound
+	}
+
+	// Get existing log
+	log, err := s.repo.GetByID(ctx, logID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Verify ownership
+	if log.UserID != userID {
+		return nil, domain.ErrNotFound
+	}
+
+	// Apply updates
+	if req.StartAt != nil {
+		log.StartAt = req.StartAt.UTC()
+	}
+	if req.EndAt != nil {
+		log.EndAt = req.EndAt.UTC()
+	}
+	if req.Quality != nil {
+		log.Quality = *req.Quality
+	}
+	if req.Type != nil {
+		log.Type = *req.Type
+	}
+	if req.LocalTimezone != nil && *req.LocalTimezone != "" {
+		log.LocalTimezone = *req.LocalTimezone
+	}
+
+	// Validate end > start after applying updates
+	if !log.EndAt.After(log.StartAt) {
+		return nil, domain.ErrInvalidInput
+	}
+
+	// Check for overlapping sleep periods (excluding this log)
+	hasOverlap, err := s.repo.HasOverlapExcluding(ctx, userID, logID, log.StartAt, log.EndAt, log.Type)
+	if err != nil {
+		return nil, err
+	}
+	if hasOverlap {
+		return nil, domain.ErrOverlappingSleep
+	}
+
+	// Save updates
+	if err := s.repo.Update(ctx, log); err != nil {
+		return nil, err
+	}
+
+	return log, nil
 }
 
 func (s *sleepLogService) List(ctx context.Context, userID uuid.UUID, filter domain.SleepLogFilter) (*domain.SleepLogListResponse, error) {

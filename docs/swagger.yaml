@@ -4,7 +4,8 @@ definitions:
     description: Request payload for recording a sleep session.
     properties:
       client_request_id:
-        description: Optional idempotency key (max 255 chars)
+        description: Optional client-generated ID for idempotent requests (max 255
+          chars)
         example: client-uuid-12345
         maxLength: 255
         type: string
@@ -136,6 +137,37 @@ definitions:
     x-enum-varnames:
     - SleepTypeCore
     - SleepTypeNap
+  github_com_blaisecz_sleep-tracker_internal_domain.UpdateSleepLogRequest:
+    description: Request payload for updating a sleep session. All fields are optional.
+    properties:
+      end_at:
+        description: Sleep end time in RFC3339 format (must be after start_at if both
+          provided)
+        example: "2024-01-16T07:00:00Z"
+        type: string
+      local_timezone:
+        description: Optional IANA timezone for local time display
+        example: Europe/Prague
+        type: string
+      quality:
+        description: Sleep quality rating from 1 (poor) to 10 (excellent)
+        example: 7
+        maximum: 10
+        minimum: 1
+        type: integer
+      start_at:
+        description: Sleep start time in RFC3339 format (UTC recommended)
+        example: "2024-01-15T23:00:00Z"
+        type: string
+      type:
+        allOf:
+        - $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepType'
+        description: 'Sleep type: CORE (main sleep) or NAP (daytime nap)'
+        enum:
+        - CORE
+        - NAP
+        example: CORE
+    type: object
   github_com_blaisecz_sleep-tracker_internal_domain.UserResponse:
     description: User account details.
     properties:
@@ -257,13 +289,14 @@ paths:
         name: userId
         required: true
         type: string
-      - description: Start of date range (RFC3339)
+      - description: Start of date range (RFC3339, UTC recommended for consistent
+          filtering)
         example: "2024-01-01T00:00:00Z"
         format: date-time
         in: query
         name: from
         type: string
-      - description: End of date range (RFC3339)
+      - description: End of date range (RFC3339, UTC recommended for consistent filtering)
         example: "2024-01-31T23:59:59Z"
         format: date-time
         in: query
@@ -349,6 +382,59 @@ paths:
           schema:
             $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
       summary: Record sleep
+      tags:
+      - sleep-logs
+  /users/{userId}/sleep-logs/{logId}:
+    put:
+      consumes:
+      - application/json
+      description: Update an existing sleep session. All fields are optional - only
+        provided fields will be updated.
+      parameters:
+      - description: User UUID
+        example: 550e8400-e29b-41d4-a716-446655440000
+        format: uuid
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Sleep Log UUID
+        example: 660e8400-e29b-41d4-a716-446655440001
+        format: uuid
+        in: path
+        name: logId
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.UpdateSleepLogRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Updated sleep log
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepLogResponse'
+        "400":
+          description: Invalid request body or parameters
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+        "404":
+          description: User or sleep log not found
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+        "409":
+          description: Sleep period overlaps with existing log
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+        "500":
+          description: Server error
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+      summary: Update sleep log
       tags:
       - sleep-logs
 swagger: "2.0"

@@ -128,3 +128,18 @@ type SleepLogFilter struct {
 	Limit  int
 	Cursor string
 }
+
+// UpdateSleepLogRequest is the request body for updating a sleep log.
+// @Description Request payload for updating a sleep session. All fields are optional.
+type UpdateSleepLogRequest struct {
+	// Sleep start time in RFC3339 format (UTC recommended)
+	StartAt *time.Time `json:"start_at,omitempty" validate:"omitempty" example:"2024-01-15T23:00:00Z"`
+	// Sleep end time in RFC3339 format (must be after start_at if both provided)
+	EndAt *time.Time `json:"end_at,omitempty" validate:"omitempty" example:"2024-01-16T07:00:00Z"`
+	// Sleep quality rating from 1 (poor) to 10 (excellent)
+	Quality *int `json:"quality,omitempty" validate:"omitempty,min=1,max=10" example:"7" minimum:"1" maximum:"10"`
+	// Sleep type: CORE (main sleep) or NAP (daytime nap)
+	Type *SleepType `json:"type,omitempty" validate:"omitempty,oneof=CORE NAP" example:"CORE" enums:"CORE,NAP"`
+	// Optional IANA timezone for local time display
+	LocalTimezone *string `json:"local_timezone,omitempty" validate:"omitempty,timezone" example:"Europe/Prague"`
+}

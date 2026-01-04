@@ -134,7 +134,7 @@ const docTemplate = `{
                         "type": "string",
                         "format": "date-time",
                         "example": "2024-01-01T00:00:00Z",
-                        "description": "Start of date range (RFC3339)",
+                        "description": "Start of date range (RFC3339, UTC recommended for consistent filtering)",
                         "name": "from",
                         "in": "query"
                     },
@@ -142,7 +142,7 @@ const docTemplate = `{
                         "type": "string",
                         "format": "date-time",
                         "example": "2024-01-31T23:59:59Z",
-                        "description": "End of date range (RFC3339)",
+                        "description": "End of date range (RFC3339, UTC recommended for consistent filtering)",
                         "name": "to",
                         "in": "query"
                     },
@@ -260,6 +260,82 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/users/{userId}/sleep-logs/{logId}": {
+            "put": {
+                "description": "Update an existing sleep session. All fields are optional - only provided fields will be updated.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sleep-logs"
+                ],
+                "summary": "Update sleep log",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "description": "User UUID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "660e8400-e29b-41d4-a716-446655440001",
+                        "description": "Sleep Log UUID",
+                        "name": "logId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.UpdateSleepLogRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated sleep log",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepLogResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body or parameters",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    },
+                    "404": {
+                        "description": "User or sleep log not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    },
+                    "409": {
+                        "description": "Sleep period overlaps with existing log",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -274,7 +350,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "client_request_id": {
-                    "description": "Optional idempotency key (max 255 chars)",
+                    "description": "Optional client-generated ID for idempotent requests (max 255 chars)",
                     "type": "string",
                     "maxLength": 255,
                     "example": "client-uuid-12345"
@@ -443,6 +519,47 @@ const docTemplate = `{
                 "SleepTypeCore",
                 "SleepTypeNap"
             ]
+        },
+        "github_com_blaisecz_sleep-tracker_internal_domain.UpdateSleepLogRequest": {
+            "description": "Request payload for updating a sleep session. All fields are optional.",
+            "type": "object",
+            "properties": {
+                "end_at": {
+                    "description": "Sleep end time in RFC3339 format (must be after start_at if both provided)",
+                    "type": "string",
+                    "example": "2024-01-16T07:00:00Z"
+                },
+                "local_timezone": {
+                    "description": "Optional IANA timezone for local time display",
+                    "type": "string",
+                    "example": "Europe/Prague"
+                },
+                "quality": {
+                    "description": "Sleep quality rating from 1 (poor) to 10 (excellent)",
+                    "type": "integer",
+                    "maximum": 10,
+                    "minimum": 1,
+                    "example": 7
+                },
+                "start_at": {
+                    "description": "Sleep start time in RFC3339 format (UTC recommended)",
+                    "type": "string",
+                    "example": "2024-01-15T23:00:00Z"
+                },
+                "type": {
+                    "description": "Sleep type: CORE (main sleep) or NAP (daytime nap)",
+                    "enum": [
+                        "CORE",
+                        "NAP"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepType"
+                        }
+                    ],
+                    "example": "CORE"
+                }
+            }
         },
         "github_com_blaisecz_sleep-tracker_internal_domain.UserResponse": {
             "description": "User account details.",
