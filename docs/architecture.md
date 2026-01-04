@@ -20,10 +20,10 @@ Sleep Tracker is a Go-based REST API service that helps users track their sleep 
 |-----------|------------|
 | Language | Go 1.22+ |
 | Database | PostgreSQL 16 |
-| Migrations | golang-migrate |
+| Migrations | GORM AutoMigrate |
 | HTTP Router | chi / stdlib |
 | Containerization | Docker + Docker Compose |
-| Testing | go test + testcontainers |
+| Testing | go test |
 
 ---
 
@@ -37,58 +37,50 @@ sleep-tracker/
 ├── internal/
 │   ├── api/
 │   │   ├── handler/                # HTTP handlers
-│   │   │   ├── user.go
-│   │   │   ├── sleeplog.go
-│   │   │   └── summary.go
+│   │   │   ├── user_handler.go
+│   │   │   ├── user_handler_test.go
+│   │   │   ├── sleep_log_handler.go
+│   │   │   └── sleep_log_handler_test.go
 │   │   ├── middleware/             # HTTP middleware
 │   │   │   ├── logging.go
-│   │   │   ├── recovery.go
-│   │   │   └── requestid.go
-│   │   ├── router.go               # Route definitions
-│   │   └── server.go               # HTTP server setup
+│   │   │   └── recovery.go
+│   │   ├── validation/             # Input validation
+│   │   │   └── validator.go
+│   │   └── router.go               # Route definitions
 │   ├── domain/
 │   │   ├── user.go                 # User entity & repository interface
-│   │   ├── sleeplog.go             # SleepLog entity & repository interface
+│   │   ├── sleep_log.go            # SleepLog entity & repository interface
 │   │   └── errors.go               # Domain errors
 │   ├── repository/
-│   │   ├── postgres/
-│   │   │   ├── user.go             # User PostgreSQL implementation
-│   │   │   ├── sleeplog.go         # SleepLog PostgreSQL implementation
-│   │   │   └── migrations/         # SQL migration files
-│   │   └── repository.go           # Repository factory
+│   │   ├── user_repository.go      # User PostgreSQL implementation
+│   │   └── sleep_log_repository.go # SleepLog PostgreSQL implementation
 │   ├── service/
-│   │   ├── user.go                 # User business logic
-│   │   ├── sleeplog.go             # SleepLog business logic
-│   │   └── summary.go              # Summary calculations
-│   ├── validation/
-│   │   └── validator.go            # Input validation
+│   │   ├── user_service.go         # User business logic
+│   │   ├── user_service_test.go
+│   │   ├── sleep_log_service.go    # SleepLog business logic
+│   │   └── sleep_log_service_test.go
 │   └── config/
-│       └── config.go               # Configuration loading
+│       ├── config.go               # Configuration loading
+│       └── database.go             # Database connection
 ├── pkg/
 │   ├── problem/                    # RFC 9457 problem+json
 │   │   └── problem.go
-│   ├── pagination/                 # Cursor pagination utilities
-│   │   └── cursor.go
-│   └── timezone/                   # Timezone utilities
-│       └── timezone.go
-├── migrations/
-│   ├── 000001_create_users.up.sql
-│   ├── 000001_create_users.down.sql
-│   ├── 000002_create_sleep_logs.up.sql
-│   └── 000002_create_sleep_logs.down.sql
+│   └── pagination/                 # Cursor pagination utilities
+│       └── cursor.go
 ├── scripts/
-│   ├── seed.go                     # Database seeding
-│   └── wait-for-db.sh              # Docker startup script
+│   └── seed/
+│       └── main.go                 # Database seeding
 ├── test/
-│   ├── integration/                # Integration tests
-│   │   ├── user_test.go
-│   │   ├── sleeplog_test.go
-│   │   └── testutil.go
-│   └── fixtures/                   # Test fixtures
+│   └── integration/                # Integration tests (TODO)
 ├── docs/
 │   ├── project.md
 │   ├── architecture.md             # This file
-│   └── openapi.yaml                # OpenAPI specification (Should Have)
+│   ├── docs.go                     # Swagger generated docs
+│   ├── swagger.go
+│   ├── swagger.json
+│   ├── swagger.yaml
+│   ├── other-projects.md
+│   └── worklog.md
 ├── docker/
 │   ├── Dockerfile
 │   └── Dockerfile.dev              # Development with hot reload
@@ -366,12 +358,12 @@ SEED=false
 3. Implement service layer with business logic
 4. Add HTTP handler in `internal/api/handler/`
 5. Register routes in `internal/api/router.go`
-6. Add migration files in `migrations/`
+6. Update GORM AutoMigrate in `cmd/api/main.go`
 
 ### Adding New Sleep Log Types
-1. Update `type` CHECK constraint in migration
-2. Add validation in `internal/validation/validator.go`
-3. Update overlap logic in `internal/service/sleeplog.go`
+1. Update `type` CHECK constraint in domain model
+2. Add validation in `internal/api/validation/validator.go`
+3. Update overlap logic in `internal/service/sleep_log_service.go`
 
 ### Future Integration Points
 
@@ -410,4 +402,4 @@ internal/
 ## Related Documentation
 - [Project Requirements](./project.md)
 - [Work Log](./worklog.md)
-- [OpenAPI Specification](./openapi.yaml) *(Should Have)*
+- [OpenAPI Specification](./swagger.yaml)

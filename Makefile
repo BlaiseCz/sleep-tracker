@@ -77,22 +77,22 @@ seed:
 # =============================================================================
 
 docker-up:
-	docker-compose up -d
+	docker compose up -d
 
 docker-down:
-	docker-compose down
+	docker compose down
 
 docker-build:
-	docker-compose build
+	docker compose build
 
 docker-dev:
-	docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+	docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 
 docker-logs:
-	docker-compose logs -f
+	docker compose logs -f
 
 docker-clean:
-	docker-compose down -v --rmi local
+	docker compose down -v --rmi local
 
 # =============================================================================
 # Utilities

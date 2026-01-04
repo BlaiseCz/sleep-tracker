@@ -23,3 +23,12 @@ time spent on separate tasks docs documents, code etc.
 - learning about Go dependency management with Go modules
 - studying Go idioms and clean architecture patterns
 - reviewing Go standard library packages for web development
+
+4. Project review 1h
+- Code analysis with Claude Opus 4.5
+- Architecture.md update
+- git log cleanup
+- Make scripts tests and update
+
+5. AI slop removal 1h
+- example, go 1.25 does not exist

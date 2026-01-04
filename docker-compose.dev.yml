@@ -7,6 +7,8 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.dev
+    entrypoint: []
+    command: ["air", "-c", ".air.toml"]
     volumes:
       - .:/app
       - go_mod_cache:/go/pkg/mod

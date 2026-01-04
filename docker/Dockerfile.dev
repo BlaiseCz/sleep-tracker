@@ -1,5 +1,5 @@
 # Development Dockerfile with hot reload
-FROM golang:1.22-alpine
+FROM golang:1.23-alpine
 
 WORKDIR /app
 
@@ -7,13 +7,13 @@ WORKDIR /app
 RUN apk add --no-cache git ca-certificates tzdata make curl
 
 # Install air for hot reload
-RUN go install github.com/air-verse/air@latest
+RUN go install github.com/air-verse/air@v1.61.7
 
 # Install delve for debugging
-RUN go install github.com/go-delve/delve/cmd/dlv@latest
+RUN go install github.com/go-delve/delve/cmd/dlv@v1.23.1
 
 # Install golang-migrate for migrations
-RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.18.1
 
 # Copy dependency files
 COPY go.mod go.sum* ./
