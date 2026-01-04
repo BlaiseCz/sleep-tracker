@@ -7,7 +7,7 @@ import (
 )
 
 type User struct {
-	ID        uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	ID        uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
 	Timezone  string    `gorm:"type:varchar(64);not null;default:'UTC'" json:"timezone"`
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 }

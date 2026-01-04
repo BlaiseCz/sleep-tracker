@@ -1,4 +1,4 @@
-.PHONY: help run build test test-unit test-int lint seed migrate docker-up docker-down docker-build clean swagger swagger-install
+.PHONY: help run build test test-unit lint seed docker-up docker-down docker-build clean swagger swagger-install
 
 # Default target
 help:
@@ -9,12 +9,9 @@ help:
 	@echo "  make build        - Build the binary"
 	@echo "  make test         - Run all tests"
 	@echo "  make test-unit    - Run unit tests only"
-	@echo "  make test-int     - Run integration tests only"
 	@echo "  make lint         - Run golangci-lint"
 	@echo ""
 	@echo "Database:"
-	@echo "  make migrate      - Run database migrations"
-	@echo "  make migrate-down - Rollback last migration"
 	@echo "  make seed         - Load sample data"
 	@echo ""
 	@echo "Docker:"
@@ -43,9 +40,6 @@ test:
 test-unit:
 	go test -v -race -cover -short ./...
 
-test-int:
-	go test -v -race -cover -run Integration ./...
-
 lint:
 	golangci-lint run ./...
 
@@ -54,21 +48,6 @@ deps:
 	go mod tidy
 
 # =============================================================================
-# Database
-# =============================================================================
-
-MIGRATE_CMD = migrate -path migrations -database "$(DATABASE_URL)"
-
-migrate:
-	$(MIGRATE_CMD) up
-
-migrate-down:
-	$(MIGRATE_CMD) down 1
-
-migrate-create:
-	@read -p "Migration name: " name; \
-	migrate create -ext sql -dir migrations -seq $$name
-
 seed:
 	go run ./scripts/seed/main.go
 

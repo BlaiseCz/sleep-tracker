@@ -23,6 +23,7 @@ func NewUserService(repo repository.UserRepository) UserService {
 
 func (s *userService) Create(ctx context.Context, req *domain.CreateUserRequest) (*domain.User, error) {
 	user := &domain.User{
+		ID:       uuid.New(),
 		Timezone: req.Timezone,
 	}
 

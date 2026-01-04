@@ -1,10 +1,10 @@
 # Build stage
-FROM golang:1.22-alpine AS builder
+FROM golang:1.22.10-alpine AS builder
 
 WORKDIR /app
 
 # Install build dependencies
-RUN apk add --no-cache git ca-certificates tzdata
+RUN apk add --no-cache git ca-certificates tzdata wget
 
 # Copy dependency files first for better caching
 COPY go.mod go.sum* ./
@@ -27,8 +27,9 @@ WORKDIR /app
 # Copy timezone data for proper timezone handling
 COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 
-# Copy the binary
+# Copy required binaries
 COPY --from=builder /app/bin/api /app/api
+COPY --from=builder /usr/bin/wget /usr/bin/wget
 
 # Run as non-root user
 USER nonroot:nonroot

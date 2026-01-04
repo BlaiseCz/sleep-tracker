@@ -7,7 +7,7 @@ import (
 
 const (
 	ContentType = "application/problem+json"
-	BaseURI     = "https://api.sleeptracker.dev/problems"
+	BaseURI     = "http://localhost:8080/problems"
 )
 
 // Problem represents an RFC 9457 problem+json response

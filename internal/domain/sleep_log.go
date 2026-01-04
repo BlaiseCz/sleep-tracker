@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // SleepType represents the category of sleep session.
@@ -18,7 +19,7 @@ const (
 )
 
 type SleepLog struct {
-	ID              uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	ID              uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
 	UserID          uuid.UUID `gorm:"type:uuid;not null;index:idx_sleep_logs_user_start" json:"user_id"`
 	StartAt         time.Time `gorm:"not null;index:idx_sleep_logs_user_start,sort:desc" json:"start_at"`
 	EndAt           time.Time `gorm:"not null" json:"end_at"`
@@ -34,6 +35,15 @@ type SleepLog struct {
 
 func (SleepLog) TableName() string {
 	return "sleep_logs"
+}
+
+// BeforeCreate makes sure SleepLog IDs are always populated. GORM doesn't
+// auto-generate UUIDs, so we assign one if the caller left it empty.
+func (s *SleepLog) BeforeCreate(tx *gorm.DB) error {
+	if s.ID == uuid.Nil {
+		s.ID = uuid.New()
+	}
+	return nil
 }
 
 // CreateSleepLogRequest is the request body for creating a sleep log.

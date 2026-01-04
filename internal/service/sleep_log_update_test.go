@@ -283,7 +283,7 @@ func TestSleepLogService_Update_OverlapDetection(t *testing.T) {
 			wantErr: nil,
 		},
 		{
-			name: "NAP can overlap with NAP after update",
+			name: "NAP overlap now blocked",
 			req: &domain.UpdateSleepLogRequest{
 				StartAt: timePtr(time.Date(2024, 1, 16, 14, 0, 0, 0, time.UTC)),
 				EndAt:   timePtr(time.Date(2024, 1, 16, 15, 30, 0, 0, time.UTC)),
@@ -308,7 +308,7 @@ func TestSleepLogService_Update_OverlapDetection(t *testing.T) {
 					Type:    domain.SleepTypeNap,
 				}
 			},
-			wantErr: nil, // NAPs can overlap with each other
+			wantErr: domain.ErrOverlappingSleep,
 		},
 	}
 

@@ -6,9 +6,9 @@ A Go-based REST API service for tracking sleep patterns and quality. Users can l
 
 - **User Management** — Create users with IANA timezone preferences
 - **Sleep Logging** — Record CORE (night) and NAP (daytime) sleep sessions with quality ratings (1-10)
-- **Overlap Prevention** — Automatic detection and rejection of overlapping CORE sleep periods
+- **Overlap Prevention** — Automatic detection and rejection of overlapping sleep periods (CORE ↔ NAP ↔ NAP)
 - **Idempotent Requests** — Optional `client_request_id` ensures safe retries without duplicate entries
-- **Filtering & Pagination** — Query logs by date range with cursor-based pagination
+- **Filtering & Pagination** — Query logs by date range with cursor-based pagination (default page size: 20, max: 100)
 - **Timezone Support** — UTC storage with automatic local time conversion in responses
 - **RFC 9457 Errors** — Standardized `application/problem+json` error responses
 - **Swagger/OpenAPI** — Interactive API documentation at `/swagger/index.html`
@@ -34,7 +34,7 @@ make docker-up
 # or: docker compose up -d
 
 # Seed sample data (optional)
-make seed
+SEED=true docker compose up api
 
 # View logs
 docker compose logs -f api
@@ -55,7 +55,7 @@ docker compose up -d postgres
 cp .env.example .env
 
 # Start the API server
-make run
+SEED=false make run
 
 # Or with hot reload
 make docker-dev
@@ -213,14 +213,17 @@ curl -X PUT http://localhost:8080/v1/users/{userId}/sleep-logs/{logId} \
 - Each user has a `timezone` attribute (IANA format, e.g., `Europe/Prague`)
 - Sleep logs can override the timezone via `local_timezone` field
 - Responses include both UTC times (`start_at`, `end_at`) and local times (`local_start_at`, `local_end_at`)
+- The `local_timezone` value influences **only presentation**—the UTC timestamps remain unchanged, so you can update the timezone later without losing fidelity
 
-### 2. Sleep Type & Overlap Policy
-| Type | Description | Overlap Rules |
-|------|-------------|---------------|
-| `CORE` | Primary overnight sleep | Cannot overlap with any CORE sleep |
-| `NAP` | Daytime nap | Can overlap with other NAPs, but not with CORE |
+**Travel example:** fall asleep on a flight leaving Poznań at 22:00 CET (`2026-01-04T21:00:00Z`) and wake up eight hours later over San Francisco (`2026-01-05T05:00:00Z`). If the client saves `local_timezone = "Europe/Warsaw"`, responses show `local_start_at = 2026-01-04T22:00:00+01:00` and `local_end_at = 2026-01-05T06:00:00+01:00`, reflecting departure time. Updating the log to `local_timezone = "America/Los_Angeles"` recalculates those local fields to Pacific Time (`13:00` to `21:00`), while the stored UTC range—and thus total sleep duration—stays intact.
 
-This prevents impossible scenarios (two nights of sleep at once) while allowing flexible nap tracking.
+### 2. Sleep Types (No Overlap)
+| Type | Description | Overlap Allowed? |
+|------|-------------|------------------|
+| `CORE` | Primary overnight sleep | ❌ Never – overlapping requests are rejected |
+| `NAP` | Daytime nap | ❌ Never – overlapping requests are rejected |
+
+Any attempt to create or update a sleep log that intersects another (regardless of type) is rejected with `409 Conflict`. This keeps the model deterministic and avoids double-counting sleep duration.
 
 ### 3. Idempotency via `client_request_id`
 - **Purpose:** Safe retries for unreliable networks (mobile apps, flaky connections)
@@ -233,7 +236,7 @@ This prevents impossible scenarios (two nights of sleep at once) while allowing 
 ### 4. Cursor-Based Pagination
 - Uses opaque base64-encoded cursors (contains `id` + `start_at`)
 - Results ordered by `start_at DESC` (newest first)
-- Default limit: **50**, maximum: **100**
+- Default limit: **20**, maximum: **100**
 - Stable pagination even when new records are inserted
 
 ### 5. RFC 9457 Problem Details
@@ -244,7 +247,9 @@ All errors return `application/problem+json` with:
 - `detail` — Specific error message
 - `errors` — Array of field-level validation errors (when applicable)
 
-### 6. Clean Architecture
+> Depending on team conventions, domain errors like `ErrInvalidInput` can also map to HTTP 422. The current service uses 400 for simplicity, but the error surface keeps this flexible.
+
+### 6. Clean Architecture & Observability
 ```
 cmd/api/           → Application entrypoint
 internal/
@@ -259,6 +264,7 @@ pkg/               → Shared utilities (pagination, problem responses)
 - **Dependency injection** via constructor functions
 - **Interface-based** repository pattern for testability
 - **No framework lock-in** — uses standard `net/http` with chi router
+- **Structured logging roadmap** — currently uses the standard library `log` package with a TODO to adopt `log/slog` (or OpenTelemetry-friendly logger) for richer Grafana traces.
 
 ---
 
@@ -301,7 +307,7 @@ sleep-tracker/
 ├── docker/               # Dockerfiles
 ├── docs/                 # Swagger generated files
 ├── scripts/seed/         # Sample data loader
-└── test/integration/     # Integration tests
+└── notes/                # Architecture, project notes, worklog
 ```
 
 ---
@@ -313,6 +319,7 @@ sleep-tracker/
 | `PORT` | Server port | `8080` |
 | `DATABASE_URL` | PostgreSQL connection string | — |
 | `LOG_LEVEL` | Logging level (debug, info, warn, error) | `info` |
+| `SEED` | `true` to load sample users & logs on startup | `false` |
 
 See `.env.example` for a complete template.
 

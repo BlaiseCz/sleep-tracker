@@ -24,6 +24,7 @@ import (
 	"github.com/blaisecz/sleep-tracker/internal/config"
 	"github.com/blaisecz/sleep-tracker/internal/domain"
 	"github.com/blaisecz/sleep-tracker/internal/repository"
+	"github.com/blaisecz/sleep-tracker/internal/seed"
 	"github.com/blaisecz/sleep-tracker/internal/service"
 )
 
@@ -42,6 +43,13 @@ func main() {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
 	log.Println("Database migration completed")
+
+	if cfg.Seed {
+		log.Println("Seeding database with sample data (SEED=true)...")
+		if err := seed.Run(db); err != nil {
+			log.Fatalf("Failed to seed database: %v", err)
+		}
+	}
 
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(db)

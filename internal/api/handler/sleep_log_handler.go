@@ -46,7 +46,9 @@ func (h *SleepLogHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req domain.CreateSleepLogRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&req); err != nil {
 		problem.BadRequest("Invalid JSON body").Write(w)
 		return
 	}
@@ -150,7 +152,9 @@ func (h *SleepLogHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req domain.UpdateSleepLogRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&req); err != nil {
 		problem.BadRequest("Invalid JSON body").Write(w)
 		return
 	}
@@ -210,6 +214,13 @@ func parseListFilter(r *http.Request) (domain.SleepLogFilter, []problem.FieldErr
 		} else {
 			filter.To = &to
 		}
+	}
+
+	if filter.From != nil && filter.To != nil && filter.From.After(*filter.To) {
+		fieldErrors = append(fieldErrors, problem.FieldError{
+			Field:   "from",
+			Message: "must be earlier than or equal to to",
+		})
 	}
 
 	// Parse 'limit' parameter

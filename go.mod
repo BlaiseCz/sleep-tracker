@@ -1,6 +1,6 @@
 module github.com/blaisecz/sleep-tracker
 
-go 1.22
+go 1.22.10
 
 require (
 	github.com/go-chi/chi/v5 v5.0.8

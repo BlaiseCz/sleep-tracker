@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	DefaultLimit = 50
+	DefaultLimit = 20
 	MaxLimit     = 100
 )
 

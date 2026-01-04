@@ -74,6 +74,7 @@ func (s *sleepLogService) Create(ctx context.Context, userID uuid.UUID, req *dom
 
 	// Create the sleep log
 	log := &domain.SleepLog{
+		ID:              uuid.New(),
 		UserID:          userID,
 		StartAt:         startUTC,
 		EndAt:           endUTC,

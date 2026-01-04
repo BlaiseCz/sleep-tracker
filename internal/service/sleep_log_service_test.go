@@ -13,17 +13,17 @@ import (
 
 func TestSleepLogService_Create(t *testing.T) {
 	userID := uuid.New()
-	
+
 	// Setup user repo with existing user
 	userRepo := NewMockUserRepository()
 	userRepo.users[userID] = &domain.User{ID: userID, Timezone: "UTC"}
 
 	tests := []struct {
-		name        string
-		req         *domain.CreateSleepLogRequest
-		setupLogs   func(*MockSleepLogRepository)
-		wantErr     error
-		wantExist   bool
+		name      string
+		req       *domain.CreateSleepLogRequest
+		setupLogs func(*MockSleepLogRepository)
+		wantErr   error
+		wantExist bool
 	}{
 		{
 			name: "valid CORE sleep",
@@ -115,6 +115,43 @@ func TestSleepLogService_Create(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestSleepLogService_List_DefaultsAndCursor(t *testing.T) {
+	userID := uuid.New()
+	userRepo := NewMockUserRepository()
+	userRepo.users[userID] = &domain.User{ID: userID, Timezone: "UTC"}
+
+	logs := make([]domain.SleepLog, 25)
+	base := time.Date(2024, 1, 31, 23, 0, 0, 0, time.UTC)
+	for i := 0; i < len(logs); i++ {
+		logs[i] = domain.SleepLog{
+			ID:      uuid.New(),
+			UserID:  userID,
+			StartAt: base.Add(-time.Duration(i) * time.Hour),
+			EndAt:   base.Add(-time.Duration(i) * time.Hour).Add(8 * time.Hour),
+		}
+	}
+
+	logRepo := NewMockSleepLogRepository()
+	logRepo.listResult = logs
+
+	svc := NewSleepLogService(logRepo, userRepo)
+
+	resp, err := svc.List(context.Background(), userID, domain.SleepLogFilter{})
+	if err != nil {
+		t.Fatalf("List() error = %v", err)
+	}
+
+	if len(resp.Data) != 20 {
+		t.Fatalf("expected default 20 results, got %d", len(resp.Data))
+	}
+	if !resp.Pagination.HasMore {
+		t.Fatalf("expected has_more true when more records exist")
+	}
+	if resp.Pagination.NextCursor == "" {
+		t.Fatalf("expected next cursor to be populated")
 	}
 }
 

@@ -86,19 +86,13 @@ func (r *sleepLogRepository) List(ctx context.Context, userID uuid.UUID, filter 
 // For CORE: checks overlap with any CORE sleep
 // For NAP: checks overlap with CORE sleep only
 func (r *sleepLogRepository) HasOverlap(ctx context.Context, userID uuid.UUID, startAt, endAt time.Time, sleepType domain.SleepType) (bool, error) {
-	query := r.db.WithContext(ctx).
+	var count int64
+	if err := r.db.WithContext(ctx).
 		Model(&domain.SleepLog{}).
 		Where("user_id = ?", userID).
 		Where("start_at < ?", endAt).
-		Where("end_at > ?", startAt)
-
-	// CORE can't overlap with CORE
-	// NAP can't overlap with CORE (but can overlap with NAP)
-	query = query.Where("type = ?", domain.SleepTypeCore)
-
-
-	var count int64
-	if err := query.Count(&count).Error; err != nil {
+		Where("end_at > ?", startAt).
+		Count(&count).Error; err != nil {
 		return false, err
 	}
 
@@ -126,19 +120,14 @@ func (r *sleepLogRepository) Update(ctx context.Context, log *domain.SleepLog) e
 // HasOverlapExcluding checks for overlapping sleep periods, excluding a specific log ID
 // Used for updates to avoid self-overlap detection
 func (r *sleepLogRepository) HasOverlapExcluding(ctx context.Context, userID uuid.UUID, excludeID uuid.UUID, startAt, endAt time.Time, sleepType domain.SleepType) (bool, error) {
-	query := r.db.WithContext(ctx).
+	var count int64
+	if err := r.db.WithContext(ctx).
 		Model(&domain.SleepLog{}).
 		Where("user_id = ?", userID).
 		Where("id != ?", excludeID).
 		Where("start_at < ?", endAt).
-		Where("end_at > ?", startAt)
-
-	// CORE can't overlap with CORE
-	// NAP can't overlap with CORE (but can overlap with NAP)
-	query = query.Where("type = ?", domain.SleepTypeCore)
-
-	var count int64
-	if err := query.Count(&count).Error; err != nil {
+		Where("end_at > ?", startAt).
+		Count(&count).Error; err != nil {
 		return false, err
 	}
 

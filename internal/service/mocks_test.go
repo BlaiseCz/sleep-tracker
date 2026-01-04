@@ -12,6 +12,7 @@ import (
 type MockSleepLogRepository struct {
 	logs            map[uuid.UUID]*domain.SleepLog
 	clientRequestID map[string]*domain.SleepLog
+	listResult      []domain.SleepLog
 	err             error
 }
 
@@ -61,6 +62,11 @@ func (m *MockSleepLogRepository) List(ctx context.Context, userID uuid.UUID, fil
 	if m.err != nil {
 		return nil, m.err
 	}
+	if m.listResult != nil {
+		result := make([]domain.SleepLog, len(m.listResult))
+		copy(result, m.listResult)
+		return result, nil
+	}
 	var result []domain.SleepLog
 	for _, log := range m.logs {
 		if log.UserID == userID {
@@ -80,14 +86,7 @@ func (m *MockSleepLogRepository) HasOverlap(ctx context.Context, userID uuid.UUI
 		}
 		// Check overlap: new period overlaps if start < existing.end AND end > existing.start
 		if startAt.Before(log.EndAt) && endAt.After(log.StartAt) {
-			// For CORE: overlaps with CORE
-			// For NAP: overlaps with CORE only
-			if log.Type == domain.SleepTypeCore {
-				return true, nil
-			}
-			if sleepType == domain.SleepTypeCore && log.Type == domain.SleepTypeCore {
-				return true, nil
-			}
+			return true, nil
 		}
 	}
 	return false, nil
@@ -103,9 +102,7 @@ func (m *MockSleepLogRepository) HasOverlapExcluding(ctx context.Context, userID
 		}
 		// Check overlap: new period overlaps if start < existing.end AND end > existing.start
 		if startAt.Before(log.EndAt) && endAt.After(log.StartAt) {
-			if log.Type == domain.SleepTypeCore {
-				return true, nil
-			}
+			return true, nil
 		}
 	}
 	return false, nil
