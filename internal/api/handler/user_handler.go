@@ -13,11 +13,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// @title Sleep Tracker API
-// @version 1.0
-// @description API for tracking sleep patterns and quality
-// @BasePath /v1
-
 type UserHandler struct {
 	service service.UserService
 }
@@ -27,15 +22,15 @@ func NewUserHandler(service service.UserService) *UserHandler {
 }
 
 // Create handles POST /v1/users
-// @Summary Create a new user
-// @Description Create a new user with timezone preference
+// @Summary Create user
+// @Description Register a new user with their preferred timezone. The timezone is used for displaying sleep times in local format.
 // @Tags users
 // @Accept json
 // @Produce json
-// @Param request body domain.CreateUserRequest true "User creation request"
-// @Success 201 {object} domain.UserResponse
-// @Failure 400 {object} problem.Problem
-// @Failure 500 {object} problem.Problem
+// @Param request body domain.CreateUserRequest true "User data" example({"timezone": "Europe/Prague"})
+// @Success 201 {object} domain.UserResponse "User created successfully"
+// @Failure 400 {object} problem.Problem "Invalid request (malformed JSON or invalid timezone)"
+// @Failure 500 {object} problem.Problem "Server error"
 // @Router /users [post]
 func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req domain.CreateUserRequest
@@ -61,15 +56,15 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetByID handles GET /v1/users/{userId}
-// @Summary Get user by ID
-// @Description Get a user's details by their UUID
+// @Summary Get user
+// @Description Retrieve user details including timezone preference.
 // @Tags users
 // @Produce json
-// @Param userId path string true "User ID" format(uuid)
-// @Success 200 {object} domain.UserResponse
-// @Failure 400 {object} problem.Problem
-// @Failure 404 {object} problem.Problem
-// @Failure 500 {object} problem.Problem
+// @Param userId path string true "User UUID" format(uuid) example(550e8400-e29b-41d4-a716-446655440000)
+// @Success 200 {object} domain.UserResponse "User details"
+// @Failure 400 {object} problem.Problem "Invalid UUID format"
+// @Failure 404 {object} problem.Problem "User not found"
+// @Failure 500 {object} problem.Problem "Server error"
 // @Router /users/{userId} [get]
 func (h *UserHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	userID, err := uuid.Parse(chi.URLParam(r, "userId"))

@@ -24,19 +24,19 @@ func NewSleepLogHandler(service service.SleepLogService) *SleepLogHandler {
 }
 
 // Create handles POST /v1/users/{userId}/sleep-logs
-// @Summary Create a sleep log
-// @Description Record a new sleep session for a user. Supports idempotency via client_request_id.
+// @Summary Record sleep
+// @Description Log a sleep session. Use client_request_id for safe retries (idempotency). Returns 200 if duplicate request, 201 if new.
 // @Tags sleep-logs
 // @Accept json
 // @Produce json
-// @Param userId path string true "User ID" format(uuid)
-// @Param request body domain.CreateSleepLogRequest true "Sleep log creation request"
-// @Success 201 {object} domain.SleepLogResponse "Created new sleep log"
-// @Success 200 {object} domain.SleepLogResponse "Returned existing sleep log (idempotent)"
-// @Failure 400 {object} problem.Problem
+// @Param userId path string true "User UUID" format(uuid) example(550e8400-e29b-41d4-a716-446655440000)
+// @Param request body domain.CreateSleepLogRequest true "Sleep session data"
+// @Success 201 {object} domain.SleepLogResponse "New sleep log created"
+// @Success 200 {object} domain.SleepLogResponse "Existing log returned (idempotent duplicate)"
+// @Failure 400 {object} problem.Problem "Invalid request body or parameters"
 // @Failure 404 {object} problem.Problem "User not found"
-// @Failure 409 {object} problem.Problem "Overlapping sleep period"
-// @Failure 500 {object} problem.Problem
+// @Failure 409 {object} problem.Problem "Sleep period overlaps with existing log"
+// @Failure 500 {object} problem.Problem "Server error"
 // @Router /users/{userId}/sleep-logs [post]
 func (h *SleepLogHandler) Create(w http.ResponseWriter, r *http.Request) {
 	userID, err := uuid.Parse(chi.URLParam(r, "userId"))
@@ -81,18 +81,18 @@ func (h *SleepLogHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // List handles GET /v1/users/{userId}/sleep-logs
 // @Summary List sleep logs
-// @Description Get paginated sleep logs for a user with optional date filtering
+// @Description Fetch paginated sleep history. Filter by date range. Results sorted by start_at descending (newest first).
 // @Tags sleep-logs
 // @Produce json
-// @Param userId path string true "User ID" format(uuid)
-// @Param from query string false "Filter logs starting from this time" format(date-time)
-// @Param to query string false "Filter logs up to this time" format(date-time)
-// @Param limit query integer false "Number of results per page" default(20) minimum(1) maximum(100)
-// @Param cursor query string false "Pagination cursor from previous response"
-// @Success 200 {object} domain.SleepLogListResponse
-// @Failure 400 {object} problem.Problem
+// @Param userId path string true "User UUID" format(uuid) example(550e8400-e29b-41d4-a716-446655440000)
+// @Param from query string false "Start of date range (RFC3339)" format(date-time) example(2024-01-01T00:00:00Z)
+// @Param to query string false "End of date range (RFC3339)" format(date-time) example(2024-01-31T23:59:59Z)
+// @Param limit query integer false "Results per page (1-100)" default(20) minimum(1) maximum(100)
+// @Param cursor query string false "Cursor from previous response's next_cursor"
+// @Success 200 {object} domain.SleepLogListResponse "Sleep logs with pagination"
+// @Failure 400 {object} problem.Problem "Invalid query parameters"
 // @Failure 404 {object} problem.Problem "User not found"
-// @Failure 500 {object} problem.Problem
+// @Failure 500 {object} problem.Problem "Server error"
 // @Router /users/{userId}/sleep-logs [get]
 func (h *SleepLogHandler) List(w http.ResponseWriter, r *http.Request) {
 	userID, err := uuid.Parse(chi.URLParam(r, "userId"))

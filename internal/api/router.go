@@ -39,6 +39,9 @@ func (rt *Router) Setup() http.Handler {
 	// Swagger documentation
 	r.Get("/swagger/*", httpSwagger.Handler(
 		httpSwagger.URL("/swagger/doc.json"),
+		httpSwagger.DeepLinking(true),
+		httpSwagger.DocExpansion("list"),
+		httpSwagger.DomID("swagger-ui"),
 	))
 
 	// API v1 routes

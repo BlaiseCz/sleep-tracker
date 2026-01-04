@@ -17,7 +17,7 @@ const docTemplate = `{
     "paths": {
         "/users": {
             "post": {
-                "description": "Create a new user with timezone preference",
+                "description": "Register a new user with their preferred timezone. The timezone is used for displaying sleep times in local format.",
                 "consumes": [
                     "application/json"
                 ],
@@ -27,10 +27,10 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
-                "summary": "Create a new user",
+                "summary": "Create user",
                 "parameters": [
                     {
-                        "description": "User creation request",
+                        "description": "User data",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -41,19 +41,19 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Created",
+                        "description": "User created successfully",
                         "schema": {
                             "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.UserResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Invalid request (malformed JSON or invalid timezone)",
                         "schema": {
                             "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
                         }
@@ -63,19 +63,20 @@ const docTemplate = `{
         },
         "/users/{userId}": {
             "get": {
-                "description": "Get a user's details by their UUID",
+                "description": "Retrieve user details including timezone preference.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "users"
                 ],
-                "summary": "Get user by ID",
+                "summary": "Get user",
                 "parameters": [
                     {
                         "type": "string",
                         "format": "uuid",
-                        "description": "User ID",
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "description": "User UUID",
                         "name": "userId",
                         "in": "path",
                         "required": true
@@ -83,25 +84,25 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "User details",
                         "schema": {
                             "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.UserResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Invalid UUID format",
                         "schema": {
                             "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "User not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
                         }
@@ -111,7 +112,7 @@ const docTemplate = `{
         },
         "/users/{userId}/sleep-logs": {
             "get": {
-                "description": "Get paginated sleep logs for a user with optional date filtering",
+                "description": "Fetch paginated sleep history. Filter by date range. Results sorted by start_at descending (newest first).",
                 "produces": [
                     "application/json"
                 ],
@@ -123,7 +124,8 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "format": "uuid",
-                        "description": "User ID",
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "description": "User UUID",
                         "name": "userId",
                         "in": "path",
                         "required": true
@@ -131,14 +133,16 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "format": "date-time",
-                        "description": "Filter logs starting from this time",
+                        "example": "2024-01-01T00:00:00Z",
+                        "description": "Start of date range (RFC3339)",
                         "name": "from",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "format": "date-time",
-                        "description": "Filter logs up to this time",
+                        "example": "2024-01-31T23:59:59Z",
+                        "description": "End of date range (RFC3339)",
                         "name": "to",
                         "in": "query"
                     },
@@ -147,26 +151,26 @@ const docTemplate = `{
                         "minimum": 1,
                         "type": "integer",
                         "default": 20,
-                        "description": "Number of results per page",
+                        "description": "Results per page (1-100)",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Pagination cursor from previous response",
+                        "description": "Cursor from previous response's next_cursor",
                         "name": "cursor",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Sleep logs with pagination",
                         "schema": {
                             "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepLogListResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Invalid query parameters",
                         "schema": {
                             "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
                         }
@@ -178,7 +182,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
                         }
@@ -186,7 +190,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Record a new sleep session for a user. Supports idempotency via client_request_id.",
+                "description": "Log a sleep session. Use client_request_id for safe retries (idempotency). Returns 200 if duplicate request, 201 if new.",
                 "consumes": [
                     "application/json"
                 ],
@@ -196,18 +200,19 @@ const docTemplate = `{
                 "tags": [
                     "sleep-logs"
                 ],
-                "summary": "Create a sleep log",
+                "summary": "Record sleep",
                 "parameters": [
                     {
                         "type": "string",
                         "format": "uuid",
-                        "description": "User ID",
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "description": "User UUID",
                         "name": "userId",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Sleep log creation request",
+                        "description": "Sleep session data",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -218,19 +223,19 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Returned existing sleep log (idempotent)",
+                        "description": "Existing log returned (idempotent duplicate)",
                         "schema": {
                             "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepLogResponse"
                         }
                     },
                     "201": {
-                        "description": "Created new sleep log",
+                        "description": "New sleep log created",
                         "schema": {
                             "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepLogResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Invalid request body or parameters",
                         "schema": {
                             "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
                         }
@@ -242,13 +247,13 @@ const docTemplate = `{
                         }
                     },
                     "409": {
-                        "description": "Overlapping sleep period",
+                        "description": "Sleep period overlaps with existing log",
                         "schema": {
                             "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
                         }
@@ -259,6 +264,7 @@ const docTemplate = `{
     },
     "definitions": {
         "github_com_blaisecz_sleep-tracker_internal_domain.CreateSleepLogRequest": {
+            "description": "Request payload for recording a sleep session.",
             "type": "object",
             "required": [
                 "end_at",
@@ -268,21 +274,35 @@ const docTemplate = `{
             ],
             "properties": {
                 "client_request_id": {
+                    "description": "Optional idempotency key (max 255 chars)",
                     "type": "string",
-                    "maxLength": 255
+                    "maxLength": 255,
+                    "example": "client-uuid-12345"
                 },
                 "end_at": {
-                    "type": "string"
+                    "description": "Sleep end time in RFC3339 format (must be after start_at)",
+                    "type": "string",
+                    "example": "2024-01-16T07:00:00Z"
+                },
+                "local_timezone": {
+                    "description": "Optional IANA timezone for local time display (defaults to user's timezone)",
+                    "type": "string",
+                    "example": "Europe/Prague"
                 },
                 "quality": {
+                    "description": "Sleep quality rating from 1 (poor) to 10 (excellent)",
                     "type": "integer",
                     "maximum": 10,
-                    "minimum": 1
+                    "minimum": 1,
+                    "example": 7
                 },
                 "start_at": {
-                    "type": "string"
+                    "description": "Sleep start time in RFC3339 format (UTC recommended)",
+                    "type": "string",
+                    "example": "2024-01-15T23:00:00Z"
                 },
                 "type": {
+                    "description": "Sleep type: CORE (main sleep) or NAP (daytime nap)",
                     "enum": [
                         "CORE",
                         "NAP"
@@ -291,76 +311,129 @@ const docTemplate = `{
                         {
                             "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepType"
                         }
-                    ]
+                    ],
+                    "example": "CORE"
                 }
             }
         },
         "github_com_blaisecz_sleep-tracker_internal_domain.CreateUserRequest": {
+            "description": "Request payload for creating a new user account.",
             "type": "object",
             "required": [
                 "timezone"
             ],
             "properties": {
                 "timezone": {
-                    "type": "string"
+                    "description": "IANA timezone identifier (e.g., \"America/New_York\", \"Europe/London\", \"UTC\").\nSee: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones",
+                    "type": "string",
+                    "example": "Europe/Prague"
                 }
             }
         },
         "github_com_blaisecz_sleep-tracker_internal_domain.PaginationResponse": {
+            "description": "Cursor-based pagination info.",
             "type": "object",
             "properties": {
                 "has_more": {
-                    "type": "boolean"
+                    "description": "True if more results are available",
+                    "type": "boolean",
+                    "example": true
                 },
                 "next_cursor": {
-                    "type": "string"
+                    "description": "Cursor for fetching the next page (empty if no more pages)",
+                    "type": "string",
+                    "example": "eyJpZCI6IjU1MGU4NDAwLWUyOWItNDFkNC1hNzE2LTQ0NjY1NTQ0MDAwMCJ9"
                 }
             }
         },
         "github_com_blaisecz_sleep-tracker_internal_domain.SleepLogListResponse": {
+            "description": "Paginated list of sleep logs.",
             "type": "object",
             "properties": {
                 "data": {
+                    "description": "Array of sleep log records",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepLogResponse"
                     }
                 },
                 "pagination": {
-                    "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.PaginationResponse"
+                    "description": "Pagination metadata",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.PaginationResponse"
+                        }
+                    ]
                 }
             }
         },
         "github_com_blaisecz_sleep-tracker_internal_domain.SleepLogResponse": {
+            "description": "Sleep session record with UTC and local times.",
             "type": "object",
             "properties": {
                 "client_request_id": {
-                    "type": "string"
+                    "description": "Client-provided request ID (if any)",
+                    "type": "string",
+                    "example": "client-uuid-12345"
                 },
                 "created_at": {
-                    "type": "string"
+                    "description": "Record creation timestamp",
+                    "type": "string",
+                    "example": "2024-01-16T07:05:00Z"
                 },
                 "end_at": {
-                    "type": "string"
+                    "description": "Sleep end time (UTC)",
+                    "type": "string",
+                    "example": "2024-01-16T07:00:00Z"
                 },
                 "id": {
-                    "type": "string"
+                    "description": "Unique sleep log identifier",
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "local_end_at": {
+                    "description": "Sleep end in local timezone",
+                    "type": "string",
+                    "example": "2024-01-16T08:00:00+01:00"
+                },
+                "local_start_at": {
+                    "description": "Sleep start in local timezone",
+                    "type": "string",
+                    "example": "2024-01-16T00:00:00+01:00"
+                },
+                "local_timezone": {
+                    "description": "Timezone used for local times",
+                    "type": "string",
+                    "example": "Europe/Prague"
                 },
                 "quality": {
-                    "type": "integer"
+                    "description": "Sleep quality (1-10)",
+                    "type": "integer",
+                    "example": 7
                 },
                 "start_at": {
-                    "type": "string"
+                    "description": "Sleep start time (UTC)",
+                    "type": "string",
+                    "example": "2024-01-15T23:00:00Z"
                 },
                 "type": {
-                    "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepType"
+                    "description": "Sleep type",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepType"
+                        }
+                    ],
+                    "example": "CORE"
                 },
                 "user_id": {
-                    "type": "string"
+                    "description": "Owner user ID",
+                    "type": "string",
+                    "example": "660e8400-e29b-41d4-a716-446655440001"
                 }
             }
         },
         "github_com_blaisecz_sleep-tracker_internal_domain.SleepType": {
+            "description": "Type of sleep: CORE for main night sleep, NAP for daytime naps.",
             "type": "string",
             "enum": [
                 "CORE",
@@ -372,16 +445,23 @@ const docTemplate = `{
             ]
         },
         "github_com_blaisecz_sleep-tracker_internal_domain.UserResponse": {
+            "description": "User account details.",
             "type": "object",
             "properties": {
                 "created_at": {
-                    "type": "string"
+                    "description": "Account creation timestamp (RFC3339)",
+                    "type": "string",
+                    "example": "2024-01-15T10:30:00Z"
                 },
                 "id": {
-                    "type": "string"
+                    "description": "Unique user identifier",
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
                 },
                 "timezone": {
-                    "type": "string"
+                    "description": "User's preferred IANA timezone",
+                    "type": "string",
+                    "example": "Europe/Prague"
                 }
             }
         },
@@ -419,17 +499,27 @@ const docTemplate = `{
                 }
             }
         }
-    }
+    },
+    "tags": [
+        {
+            "description": "User management endpoints",
+            "name": "users"
+        },
+        {
+            "description": "Sleep session tracking endpoints",
+            "name": "sleep-logs"
+        }
+    ]
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:8080",
+	Host:             "",
 	BasePath:         "/v1",
 	Schemes:          []string{},
 	Title:            "Sleep Tracker API",
-	Description:      "API for tracking sleep patterns and quality",
+	Description:      "Track sleep sessions with start/end times, quality ratings, and timezone support.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

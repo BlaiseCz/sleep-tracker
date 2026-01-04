@@ -1,3 +1,18 @@
+// Sleep Tracker API
+//
+// REST API for tracking sleep patterns and quality.
+//
+//	@title			Sleep Tracker API
+//	@version		1.0
+//	@description	Track sleep sessions with start/end times, quality ratings, and timezone support.
+//
+//	@BasePath	/v1
+//
+//	@tag.name			users
+//	@tag.description	User management endpoints
+//
+//	@tag.name			sleep-logs
+//	@tag.description	Sleep session tracking endpoints
 package main
 
 import (

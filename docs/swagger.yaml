@@ -1,24 +1,40 @@
 basePath: /v1
 definitions:
   github_com_blaisecz_sleep-tracker_internal_domain.CreateSleepLogRequest:
+    description: Request payload for recording a sleep session.
     properties:
       client_request_id:
+        description: Optional idempotency key (max 255 chars)
+        example: client-uuid-12345
         maxLength: 255
         type: string
       end_at:
+        description: Sleep end time in RFC3339 format (must be after start_at)
+        example: "2024-01-16T07:00:00Z"
+        type: string
+      local_timezone:
+        description: Optional IANA timezone for local time display (defaults to user's
+          timezone)
+        example: Europe/Prague
         type: string
       quality:
+        description: Sleep quality rating from 1 (poor) to 10 (excellent)
+        example: 7
         maximum: 10
         minimum: 1
         type: integer
       start_at:
+        description: Sleep start time in RFC3339 format (UTC recommended)
+        example: "2024-01-15T23:00:00Z"
         type: string
       type:
         allOf:
         - $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepType'
+        description: 'Sleep type: CORE (main sleep) or NAP (daytime nap)'
         enum:
         - CORE
         - NAP
+        example: CORE
     required:
     - end_at
     - quality
@@ -26,48 +42,93 @@ definitions:
     - type
     type: object
   github_com_blaisecz_sleep-tracker_internal_domain.CreateUserRequest:
+    description: Request payload for creating a new user account.
     properties:
       timezone:
+        description: |-
+          IANA timezone identifier (e.g., "America/New_York", "Europe/London", "UTC").
+          See: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+        example: Europe/Prague
         type: string
     required:
     - timezone
     type: object
   github_com_blaisecz_sleep-tracker_internal_domain.PaginationResponse:
+    description: Cursor-based pagination info.
     properties:
       has_more:
+        description: True if more results are available
+        example: true
         type: boolean
       next_cursor:
+        description: Cursor for fetching the next page (empty if no more pages)
+        example: eyJpZCI6IjU1MGU4NDAwLWUyOWItNDFkNC1hNzE2LTQ0NjY1NTQ0MDAwMCJ9
         type: string
     type: object
   github_com_blaisecz_sleep-tracker_internal_domain.SleepLogListResponse:
+    description: Paginated list of sleep logs.
     properties:
       data:
+        description: Array of sleep log records
         items:
           $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepLogResponse'
         type: array
       pagination:
-        $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.PaginationResponse'
+        allOf:
+        - $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.PaginationResponse'
+        description: Pagination metadata
     type: object
   github_com_blaisecz_sleep-tracker_internal_domain.SleepLogResponse:
+    description: Sleep session record with UTC and local times.
     properties:
       client_request_id:
+        description: Client-provided request ID (if any)
+        example: client-uuid-12345
         type: string
       created_at:
+        description: Record creation timestamp
+        example: "2024-01-16T07:05:00Z"
         type: string
       end_at:
+        description: Sleep end time (UTC)
+        example: "2024-01-16T07:00:00Z"
         type: string
       id:
+        description: Unique sleep log identifier
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      local_end_at:
+        description: Sleep end in local timezone
+        example: "2024-01-16T08:00:00+01:00"
+        type: string
+      local_start_at:
+        description: Sleep start in local timezone
+        example: "2024-01-16T00:00:00+01:00"
+        type: string
+      local_timezone:
+        description: Timezone used for local times
+        example: Europe/Prague
         type: string
       quality:
+        description: Sleep quality (1-10)
+        example: 7
         type: integer
       start_at:
+        description: Sleep start time (UTC)
+        example: "2024-01-15T23:00:00Z"
         type: string
       type:
-        $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepType'
+        allOf:
+        - $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepType'
+        description: Sleep type
+        example: CORE
       user_id:
+        description: Owner user ID
+        example: 660e8400-e29b-41d4-a716-446655440001
         type: string
     type: object
   github_com_blaisecz_sleep-tracker_internal_domain.SleepType:
+    description: 'Type of sleep: CORE for main night sleep, NAP for daytime naps.'
     enum:
     - CORE
     - NAP
@@ -76,12 +137,19 @@ definitions:
     - SleepTypeCore
     - SleepTypeNap
   github_com_blaisecz_sleep-tracker_internal_domain.UserResponse:
+    description: User account details.
     properties:
       created_at:
+        description: Account creation timestamp (RFC3339)
+        example: "2024-01-15T10:30:00Z"
         type: string
       id:
+        description: Unique user identifier
+        example: 550e8400-e29b-41d4-a716-446655440000
         type: string
       timezone:
+        description: User's preferred IANA timezone
+        example: Europe/Prague
         type: string
     type: object
   github_com_blaisecz_sleep-tracker_pkg_problem.FieldError:
@@ -106,10 +174,10 @@ definitions:
       type:
         type: string
     type: object
-host: localhost:8080
 info:
   contact: {}
-  description: API for tracking sleep patterns and quality
+  description: Track sleep sessions with start/end times, quality ratings, and timezone
+    support.
   title: Sleep Tracker API
   version: "1.0"
 paths:
@@ -117,9 +185,10 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a new user with timezone preference
+      description: Register a new user with their preferred timezone. The timezone
+        is used for displaying sleep times in local format.
       parameters:
-      - description: User creation request
+      - description: User data
         in: body
         name: request
         required: true
@@ -129,25 +198,26 @@ paths:
       - application/json
       responses:
         "201":
-          description: Created
+          description: User created successfully
           schema:
             $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.UserResponse'
         "400":
-          description: Bad Request
+          description: Invalid request (malformed JSON or invalid timezone)
           schema:
             $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
         "500":
-          description: Internal Server Error
+          description: Server error
           schema:
             $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
-      summary: Create a new user
+      summary: Create user
       tags:
       - users
   /users/{userId}:
     get:
-      description: Get a user's details by their UUID
+      description: Retrieve user details including timezone preference.
       parameters:
-      - description: User ID
+      - description: User UUID
+        example: 550e8400-e29b-41d4-a716-446655440000
         format: uuid
         in: path
         name: userId
@@ -157,64 +227,11 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: User details
           schema:
             $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.UserResponse'
         "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
-      summary: Get user by ID
-      tags:
-      - users
-  /users/{userId}/sleep-logs:
-    get:
-      description: Get paginated sleep logs for a user with optional date filtering
-      parameters:
-      - description: User ID
-        format: uuid
-        in: path
-        name: userId
-        required: true
-        type: string
-      - description: Filter logs starting from this time
-        format: date-time
-        in: query
-        name: from
-        type: string
-      - description: Filter logs up to this time
-        format: date-time
-        in: query
-        name: to
-        type: string
-      - default: 20
-        description: Number of results per page
-        in: query
-        maximum: 100
-        minimum: 1
-        name: limit
-        type: integer
-      - description: Pagination cursor from previous response
-        in: query
-        name: cursor
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepLogListResponse'
-        "400":
-          description: Bad Request
+          description: Invalid UUID format
           schema:
             $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
         "404":
@@ -222,7 +239,64 @@ paths:
           schema:
             $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
         "500":
-          description: Internal Server Error
+          description: Server error
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+      summary: Get user
+      tags:
+      - users
+  /users/{userId}/sleep-logs:
+    get:
+      description: Fetch paginated sleep history. Filter by date range. Results sorted
+        by start_at descending (newest first).
+      parameters:
+      - description: User UUID
+        example: 550e8400-e29b-41d4-a716-446655440000
+        format: uuid
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Start of date range (RFC3339)
+        example: "2024-01-01T00:00:00Z"
+        format: date-time
+        in: query
+        name: from
+        type: string
+      - description: End of date range (RFC3339)
+        example: "2024-01-31T23:59:59Z"
+        format: date-time
+        in: query
+        name: to
+        type: string
+      - default: 20
+        description: Results per page (1-100)
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        type: integer
+      - description: Cursor from previous response's next_cursor
+        in: query
+        name: cursor
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sleep logs with pagination
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepLogListResponse'
+        "400":
+          description: Invalid query parameters
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+        "500":
+          description: Server error
           schema:
             $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
       summary: List sleep logs
@@ -231,16 +305,17 @@ paths:
     post:
       consumes:
       - application/json
-      description: Record a new sleep session for a user. Supports idempotency via
-        client_request_id.
+      description: Log a sleep session. Use client_request_id for safe retries (idempotency).
+        Returns 200 if duplicate request, 201 if new.
       parameters:
-      - description: User ID
+      - description: User UUID
+        example: 550e8400-e29b-41d4-a716-446655440000
         format: uuid
         in: path
         name: userId
         required: true
         type: string
-      - description: Sleep log creation request
+      - description: Sleep session data
         in: body
         name: request
         required: true
@@ -250,15 +325,15 @@ paths:
       - application/json
       responses:
         "200":
-          description: Returned existing sleep log (idempotent)
+          description: Existing log returned (idempotent duplicate)
           schema:
             $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepLogResponse'
         "201":
-          description: Created new sleep log
+          description: New sleep log created
           schema:
             $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.SleepLogResponse'
         "400":
-          description: Bad Request
+          description: Invalid request body or parameters
           schema:
             $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
         "404":
@@ -266,14 +341,19 @@ paths:
           schema:
             $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
         "409":
-          description: Overlapping sleep period
+          description: Sleep period overlaps with existing log
           schema:
             $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
         "500":
-          description: Internal Server Error
+          description: Server error
           schema:
             $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
-      summary: Create a sleep log
+      summary: Record sleep
       tags:
       - sleep-logs
 swagger: "2.0"
+tags:
+- description: User management endpoints
+  name: users
+- description: Sleep session tracking endpoints
+  name: sleep-logs
