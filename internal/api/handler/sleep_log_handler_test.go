@@ -81,21 +81,21 @@ func TestSleepLogHandler_Create(t *testing.T) {
 			userID:         userID.String(),
 			body:           `{"start_at": "2024-01-15T23:00:00Z", "end_at": "2024-01-16T07:00:00Z", "quality": 0, "type": "CORE"}`,
 			mockService:    &MockSleepLogService{},
-			wantStatusCode: http.StatusBadRequest,
+			wantStatusCode: http.StatusUnprocessableEntity,
 		},
 		{
 			name:           "quality too high",
 			userID:         userID.String(),
 			body:           `{"start_at": "2024-01-15T23:00:00Z", "end_at": "2024-01-16T07:00:00Z", "quality": 11, "type": "CORE"}`,
 			mockService:    &MockSleepLogService{},
-			wantStatusCode: http.StatusBadRequest,
+			wantStatusCode: http.StatusUnprocessableEntity,
 		},
 		{
 			name:           "invalid type",
 			userID:         userID.String(),
 			body:           `{"start_at": "2024-01-15T23:00:00Z", "end_at": "2024-01-16T07:00:00Z", "quality": 8, "type": "INVALID"}`,
 			mockService:    &MockSleepLogService{},
-			wantStatusCode: http.StatusBadRequest,
+			wantStatusCode: http.StatusUnprocessableEntity,
 		},
 		{
 			name:   "user not found",
@@ -503,7 +503,7 @@ func TestSleepLogHandler_List(t *testing.T) {
 			userID:         userID.String(),
 			queryParams:    "?from=invalid-date",
 			mockService:    &MockSleepLogService{},
-			wantStatusCode: http.StatusBadRequest,
+			wantStatusCode: http.StatusUnprocessableEntity,
 		},
 		{
 			name:   "user not found",

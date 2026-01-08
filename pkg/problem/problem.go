@@ -59,7 +59,7 @@ func BadRequest(detail string) *Problem {
 }
 
 func ValidationError(detail string, errors []FieldError) *Problem {
-	return New(http.StatusBadRequest, "validation-error", "Validation Error", detail).WithErrors(errors)
+	return New(http.StatusUnprocessableEntity, "validation-error", "Validation Error", detail).WithErrors(errors)
 }
 
 func Conflict(detail string) *Problem {

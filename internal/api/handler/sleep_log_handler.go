@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strconv"
-	"time"
 
 	"github.com/blaisecz/sleep-tracker/internal/api/validation"
 	"github.com/blaisecz/sleep-tracker/internal/domain"
@@ -103,7 +101,7 @@ func (h *SleepLogHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filter, fieldErrors := parseListFilter(r)
+	filter, fieldErrors := validation.ParseSleepLogFilter(r)
 	if fieldErrors != nil {
 		problem.ValidationError("Invalid query parameters", fieldErrors).Write(w)
 		return
@@ -184,64 +182,4 @@ func (h *SleepLogHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(log.ToResponse())
-}
-
-func parseListFilter(r *http.Request) (domain.SleepLogFilter, []problem.FieldError) {
-	var filter domain.SleepLogFilter
-	var fieldErrors []problem.FieldError
-
-	// Parse 'from' parameter
-	if fromStr := r.URL.Query().Get("from"); fromStr != "" {
-		from, err := time.Parse(time.RFC3339, fromStr)
-		if err != nil {
-			fieldErrors = append(fieldErrors, problem.FieldError{
-				Field:   "from",
-				Message: "must be a valid RFC3339 timestamp",
-			})
-		} else {
-			filter.From = &from
-		}
-	}
-
-	// Parse 'to' parameter
-	if toStr := r.URL.Query().Get("to"); toStr != "" {
-		to, err := time.Parse(time.RFC3339, toStr)
-		if err != nil {
-			fieldErrors = append(fieldErrors, problem.FieldError{
-				Field:   "to",
-				Message: "must be a valid RFC3339 timestamp",
-			})
-		} else {
-			filter.To = &to
-		}
-	}
-
-	if filter.From != nil && filter.To != nil && filter.From.After(*filter.To) {
-		fieldErrors = append(fieldErrors, problem.FieldError{
-			Field:   "from",
-			Message: "must be earlier than or equal to to",
-		})
-	}
-
-	// Parse 'limit' parameter
-	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
-		limit, err := strconv.Atoi(limitStr)
-		if err != nil || limit < 1 {
-			fieldErrors = append(fieldErrors, problem.FieldError{
-				Field:   "limit",
-				Message: "must be a positive integer",
-			})
-		} else {
-			filter.Limit = limit
-		}
-	}
-
-	// Parse 'cursor' parameter
-	filter.Cursor = r.URL.Query().Get("cursor")
-
-	if len(fieldErrors) > 0 {
-		return filter, fieldErrors
-	}
-
-	return filter, nil
 }

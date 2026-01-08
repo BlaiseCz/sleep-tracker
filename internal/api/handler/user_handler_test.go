@@ -63,13 +63,13 @@ func TestUserHandler_Create(t *testing.T) {
 			name:           "missing timezone",
 			body:           `{}`,
 			mockService:    &MockUserService{},
-			wantStatusCode: http.StatusBadRequest,
+			wantStatusCode: http.StatusUnprocessableEntity,
 		},
 		{
 			name:           "invalid timezone",
 			body:           `{"timezone": "Invalid/Zone"}`,
 			mockService:    &MockUserService{},
-			wantStatusCode: http.StatusBadRequest,
+			wantStatusCode: http.StatusUnprocessableEntity,
 		},
 	}
 

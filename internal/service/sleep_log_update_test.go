@@ -35,6 +35,26 @@ func TestSleepLogService_Update(t *testing.T) {
 		validate  func(*testing.T, *domain.SleepLog)
 	}{
 		{
+			name: "update start only",
+			req: &domain.UpdateSleepLogRequest{
+				StartAt: timePtr(time.Date(2024, 1, 15, 22, 30, 0, 0, time.UTC)),
+			},
+			setupLogs: func(repo *MockSleepLogRepository) {
+				logCopy := *baseLog
+				repo.logs[logID] = &logCopy
+			},
+			wantErr: nil,
+			validate: func(t *testing.T, log *domain.SleepLog) {
+				expectedStart := time.Date(2024, 1, 15, 22, 30, 0, 0, time.UTC)
+				if !log.StartAt.Equal(expectedStart) {
+					t.Fatalf("StartAt = %v, want %v", log.StartAt, expectedStart)
+				}
+				if !log.EndAt.Equal(baseLog.EndAt) {
+					t.Fatalf("EndAt = %v, want %v (unchanged)", log.EndAt, baseLog.EndAt)
+				}
+			},
+		},
+		{
 			name: "update quality only",
 			req: &domain.UpdateSleepLogRequest{
 				Quality: intPtr(9),
@@ -51,6 +71,26 @@ func TestSleepLogService_Update(t *testing.T) {
 				// Other fields should remain unchanged
 				if log.Type != domain.SleepTypeCore {
 					t.Errorf("Type changed unexpectedly to %s", log.Type)
+				}
+			},
+		},
+		{
+			name: "update end only",
+			req: &domain.UpdateSleepLogRequest{
+				EndAt: timePtr(time.Date(2024, 1, 16, 8, 0, 0, 0, time.UTC)),
+			},
+			setupLogs: func(repo *MockSleepLogRepository) {
+				logCopy := *baseLog
+				repo.logs[logID] = &logCopy
+			},
+			wantErr: nil,
+			validate: func(t *testing.T, log *domain.SleepLog) {
+				expectedEnd := time.Date(2024, 1, 16, 8, 0, 0, 0, time.UTC)
+				if !log.EndAt.Equal(expectedEnd) {
+					t.Fatalf("EndAt = %v, want %v", log.EndAt, expectedEnd)
+				}
+				if !log.StartAt.Equal(baseLog.StartAt) {
+					t.Fatalf("StartAt = %v, want %v (unchanged)", log.StartAt, baseLog.StartAt)
 				}
 			},
 		},

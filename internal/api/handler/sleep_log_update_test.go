@@ -136,7 +136,7 @@ func TestSleepLogHandler_Update(t *testing.T) {
 			logID:          logID.String(),
 			body:           `{"quality": 0}`,
 			mockService:    &MockSleepLogService{},
-			wantStatusCode: http.StatusBadRequest,
+			wantStatusCode: http.StatusUnprocessableEntity,
 		},
 		{
 			name:           "quality too high",
@@ -144,7 +144,7 @@ func TestSleepLogHandler_Update(t *testing.T) {
 			logID:          logID.String(),
 			body:           `{"quality": 11}`,
 			mockService:    &MockSleepLogService{},
-			wantStatusCode: http.StatusBadRequest,
+			wantStatusCode: http.StatusUnprocessableEntity,
 		},
 		{
 			name:           "invalid type",
@@ -152,7 +152,7 @@ func TestSleepLogHandler_Update(t *testing.T) {
 			logID:          logID.String(),
 			body:           `{"type": "INVALID"}`,
 			mockService:    &MockSleepLogService{},
-			wantStatusCode: http.StatusBadRequest,
+			wantStatusCode: http.StatusUnprocessableEntity,
 		},
 		{
 			name:   "log not found",
