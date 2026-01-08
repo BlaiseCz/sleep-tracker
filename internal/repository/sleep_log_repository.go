@@ -18,6 +18,8 @@ type SleepLogRepository interface {
 	HasOverlap(ctx context.Context, userID uuid.UUID, startAt, endAt time.Time, sleepType domain.SleepType) (bool, error)
 	HasOverlapExcluding(ctx context.Context, userID uuid.UUID, excludeID uuid.UUID, startAt, endAt time.Time, sleepType domain.SleepType) (bool, error)
 	GetByClientRequestID(ctx context.Context, userID uuid.UUID, clientRequestID string) (*domain.SleepLog, error)
+	// ListByEndRange returns all sleep logs for a user where EndAt is within [from, to].
+	ListByEndRange(ctx context.Context, userID uuid.UUID, from, to time.Time) ([]domain.SleepLog, error)
 }
 
 type sleepLogRepository struct {
@@ -132,4 +134,19 @@ func (r *sleepLogRepository) HasOverlapExcluding(ctx context.Context, userID uui
 	}
 
 	return count > 0, nil
+}
+
+// ListByEndRange returns all sleep logs for a user where EndAt is within [from, to].
+// Results are ordered by end_at DESC.
+func (r *sleepLogRepository) ListByEndRange(ctx context.Context, userID uuid.UUID, from, to time.Time) ([]domain.SleepLog, error) {
+	var logs []domain.SleepLog
+	if err := r.db.WithContext(ctx).
+		Where("user_id = ?", userID).
+		Where("end_at >= ?", from).
+		Where("end_at <= ?", to).
+		Order("end_at DESC").
+		Find(&logs).Error; err != nil {
+		return nil, err
+	}
+	return logs, nil
 }

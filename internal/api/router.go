@@ -14,12 +14,14 @@ import (
 type Router struct {
 	userHandler     *handler.UserHandler
 	sleepLogHandler *handler.SleepLogHandler
+	insightsHandler *handler.InsightsHandler
 }
 
-func NewRouter(userHandler *handler.UserHandler, sleepLogHandler *handler.SleepLogHandler) *Router {
+func NewRouter(userHandler *handler.UserHandler, sleepLogHandler *handler.SleepLogHandler, insightsHandler *handler.InsightsHandler) *Router {
 	return &Router{
 		userHandler:     userHandler,
 		sleepLogHandler: sleepLogHandler,
+		insightsHandler: insightsHandler,
 	}
 }
 
@@ -56,6 +58,13 @@ func (rt *Router) Setup() http.Handler {
 				r.Post("/", rt.sleepLogHandler.Create)
 				r.Get("/", rt.sleepLogHandler.List)
 				r.Put("/{logId}", rt.sleepLogHandler.Update)
+			})
+
+			// Sleep insights (nested under users)
+			r.Route("/{userId}/sleep", func(r chi.Router) {
+				r.Get("/chronotype", rt.insightsHandler.GetChronotype)
+				r.Get("/metrics", rt.insightsHandler.GetMetrics)
+				r.Get("/insights", rt.insightsHandler.GetInsights)
 			})
 		})
 	})

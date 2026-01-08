@@ -32,3 +32,15 @@ time spent on separate tasks docs documents, code etc.
 
 5. AI slop removal 1h
 - example, go 1.25 does not exist
+
+6. SleepLogUpdate 1h
+- sleep log update with tests
+- code cleanup, validation layer moved to internal/api/validation
+
+7. Additional feature ongoing 4h
+- insights feature -> 3 key components
+    - metrics
+    - chronotype
+    - LLM summary
+
+8. TODO - Langfuse(?)

@@ -120,6 +120,19 @@ func (m *MockSleepLogRepository) GetByClientRequestID(ctx context.Context, userI
 	return log, nil
 }
 
+func (m *MockSleepLogRepository) ListByEndRange(ctx context.Context, userID uuid.UUID, from, to time.Time) ([]domain.SleepLog, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	var result []domain.SleepLog
+	for _, log := range m.logs {
+		if log.UserID == userID && !log.EndAt.Before(from) && !log.EndAt.After(to) {
+			result = append(result, *log)
+		}
+	}
+	return result, nil
+}
+
 // MockUserRepository is a mock implementation of UserRepository
 type MockUserRepository struct {
 	users map[uuid.UUID]*domain.User
