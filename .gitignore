@@ -30,6 +30,7 @@ tmp/
 .env
 .env.local
 .env.*.local
+docker-compose.yml
 
 # OS files
 .DS_Store

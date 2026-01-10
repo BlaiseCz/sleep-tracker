@@ -29,6 +29,9 @@ A Go-based REST API service for tracking sleep patterns and quality. Users can l
 # Copy environment file
 cp .env.example .env
 
+# Copy docker-compose template (contains the LLM env placeholders)
+cp docker-compose.yml.example docker-compose.yml
+
 # Start all services (API + PostgreSQL)
 make docker-up
 # or: docker compose up -d
@@ -320,6 +323,10 @@ sleep-tracker/
 | `DATABASE_URL` | PostgreSQL connection string | — |
 | `LOG_LEVEL` | Logging level (debug, info, warn, error) | `info` |
 | `SEED` | `true` to load sample users & logs on startup | `false` |
+| `OPENAI_API_KEY` | Required for `/sleep/insights` when using Docker | — |
+| `OPENAI_SLEEP_INSIGHTS_MODEL` | Optional override of the OpenAI model | `gpt-4o-mini` |
+
+> **Security tip:** Commit `docker-compose.yml.example`, keep your real `docker-compose.yml` gitignored, and rely on environment variables (or a secret manager) so API keys never land in version control.
 
 See `.env.example` for a complete template.
 

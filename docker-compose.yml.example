@@ -1,0 +1,57 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: sleep-tracker-api
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - DATABASE_URL=postgres://sleepuser:sleeppass@postgres:5432/sleeptracker?sslmode=disable
+      - LOG_LEVEL=info
+      - SEED=${SEED:-false}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_SLEEP_INSIGHTS_MODEL=${OPENAI_SLEEP_INSIGHTS_MODEL:-gpt-4o-mini}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - sleep-tracker-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: sleep-tracker-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=sleepuser
+      - POSTGRES_PASSWORD=sleeppass
+      - POSTGRES_DB=sleeptracker
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - sleep-tracker-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sleepuser -d sleeptracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  sleep-tracker-net:
+    driver: bridge
