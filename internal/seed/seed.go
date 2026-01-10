@@ -11,6 +11,8 @@ import (
 	"gorm.io/gorm"
 )
 
+const seededDays = 40
+
 // Run seeds the database with sample users and sleep logs. Safe to call multiple times.
 func Run(db *gorm.DB) error {
 	if err := db.AutoMigrate(&domain.User{}, &domain.SleepLog{}); err != nil {
@@ -21,6 +23,7 @@ func Run(db *gorm.DB) error {
 		{ID: uuid.MustParse("11111111-1111-1111-1111-111111111111"), Timezone: "Europe/Amsterdam"},
 		{ID: uuid.MustParse("22222222-2222-2222-2222-222222222222"), Timezone: "America/New_York"},
 		{ID: uuid.MustParse("33333333-3333-3333-3333-333333333333"), Timezone: "Asia/Tokyo"},
+		{ID: uuid.MustParse("44444444-4444-4444-4444-444444444444"), Timezone: "Australia/Sydney"},
 	}
 
 	for _, user := range users {
@@ -42,7 +45,7 @@ func Run(db *gorm.DB) error {
 
 func seedSleepLogsForUser(db *gorm.DB, user domain.User, rng *rand.Rand) error {
 	now := time.Now().UTC()
-	for i := 0; i < 14; i++ {
+	for i := 0; i < seededDays; i++ {
 		date := now.AddDate(0, 0, -i)
 		bedtime := time.Date(date.Year(), date.Month(), date.Day(), 22+rng.Intn(2), rng.Intn(60), 0, 0, time.UTC)
 		wakeup := bedtime.Add(time.Duration(6+rng.Intn(3)) * time.Hour)

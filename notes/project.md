@@ -26,7 +26,6 @@ Imagine a health tech startup aiming to revolutionize personal wellness through 
 
 #### Must Have 📋
 **Core User Data:**
-- User profile: age (birth date), weight, height, sex, activity level
 - Sleep logs: start/end timestamps with timezone support and current location reporting
 - Sleep quality scores (1-10 scale)
 - User chronotype classification (early bird/night owl)
@@ -47,6 +46,7 @@ Imagine a health tech startup aiming to revolutionize personal wellness through 
 - Data visualization endpoints
 
 #### Won't Have ❌
+- User profile: age (birth date), weight, height, sex, activity level
 - User authentication and authorization systems
 - Pricing and subscription management
 - Advanced user management features

@@ -17,8 +17,8 @@ help:
 	@echo "Docker:"
 	@echo "  make docker-up    - Start all services (docker-compose up)"
 	@echo "  make docker-down  - Stop all services (docker-compose down)"
-	@echo "  make docker-build - Build Docker images"
-	@echo "  make docker-dev   - Start development environment with hot reload"
+	@echo "  make docker-build - Build production Docker images"
+	@echo "  make docker-dev   - Rebuild dev image and start hot-reload env"
 	@echo ""
 	@echo "Utilities:"
 	@echo "  make clean        - Remove build artifacts"
@@ -65,7 +65,7 @@ docker-build:
 	docker compose build
 
 docker-dev:
-	docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+	docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 
 docker-logs:
 	docker compose logs -f

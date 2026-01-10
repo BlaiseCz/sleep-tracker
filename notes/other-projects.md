@@ -26,4 +26,4 @@ allowing users to track sleep quality trends and analyze their progress over tim
 [terra-sleep-analytics]: https://tryterra.co/blog/sleep-analytics-with-terra-and-AI
 
 ### State of the Art - Papers Review
-TODO
+https://github.com/zou-group/sleepfm-clinical 

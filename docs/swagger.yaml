@@ -1,5 +1,43 @@
 basePath: /v1
 definitions:
+  github_com_blaisecz_sleep-tracker_internal_domain.ChronotypeResult:
+    description: Chronotype analysis result.
+    properties:
+      chronotype:
+        allOf:
+        - $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.ChronotypeType'
+        description: Chronotype classification
+        example: intermediate
+      mid_sleep_local_time:
+        description: Mid-sleep time in local timezone (HH:MM format)
+        example: "03:45"
+        type: string
+      mid_sleep_minutes_after_midnight:
+        description: Minutes after midnight for mid-sleep
+        example: 225
+        type: integer
+      sleeps_used:
+        description: Number of sleep logs used in calculation
+        example: 28
+        type: integer
+      window_days:
+        description: Number of days in the analysis window
+        example: 30
+        type: integer
+    type: object
+  github_com_blaisecz_sleep-tracker_internal_domain.ChronotypeType:
+    description: Chronotype classification based on mid-sleep time.
+    enum:
+    - early_bird
+    - intermediate
+    - night_owl
+    - unknown
+    type: string
+    x-enum-varnames:
+    - ChronotypeEarlyBird
+    - ChronotypeIntermediate
+    - ChronotypeNightOwl
+    - ChronotypeUnknown
   github_com_blaisecz_sleep-tracker_internal_domain.CreateSleepLogRequest:
     description: Request payload for recording a sleep session.
     properties:
@@ -54,6 +92,132 @@ definitions:
     required:
     - timezone
     type: object
+  github_com_blaisecz_sleep-tracker_internal_domain.DailyOverallMetrics:
+    description: Daily total sleep metrics (core + naps combined).
+    properties:
+      daily_sufficiency_score:
+        description: Percentage of days meeting target (0-100)
+        example: 73.3
+        type: number
+      days_count:
+        description: Number of days with sleep data
+        example: 30
+        type: integer
+      days_meeting_target:
+        description: Number of days meeting the target
+        example: 22
+        type: integer
+      target_hours:
+        description: Target hours for sufficiency calculation
+        example: 7
+        type: number
+      total_daily_hours:
+        allOf:
+        - $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.DescriptiveStats'
+        description: Total daily sleep hours statistics
+    type: object
+  github_com_blaisecz_sleep-tracker_internal_domain.DerivedScores:
+    description: Derived scores based on sleep metrics.
+    properties:
+      consistency_score:
+        description: Consistency score based on bedtime variability (0-100)
+        example: 75
+        type: number
+      overall_sleep_score:
+        description: Overall sleep score combining factors (0-100)
+        example: 77.5
+        type: number
+      sufficiency_score:
+        description: Sufficiency score based on duration meeting targets (0-100)
+        example: 80
+        type: number
+    type: object
+  github_com_blaisecz_sleep-tracker_internal_domain.DescriptiveStats:
+    description: Basic statistical measures for a metric.
+    properties:
+      avg:
+        example: 7.2
+        type: number
+      max:
+        example: 9
+        type: number
+      min:
+        example: 5.5
+        type: number
+      std:
+        example: 0.8
+        type: number
+    type: object
+  github_com_blaisecz_sleep-tracker_internal_domain.InsightsResponse:
+    description: Complete sleep insights response.
+    properties:
+      chronotype:
+        allOf:
+        - $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.ChronotypeResult'
+        description: Chronotype analysis
+      insights:
+        allOf:
+        - $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.LLMInsightsOutput'
+        description: LLM-generated insights
+      metrics:
+        description: Metrics for different time windows
+        properties:
+          history:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.WindowMetrics'
+          last_night:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.WindowMetrics'
+          recent:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.WindowMetrics'
+        type: object
+    type: object
+  github_com_blaisecz_sleep-tracker_internal_domain.LLMInsightsOutput:
+    description: LLM-generated sleep insights.
+    properties:
+      guidance:
+        description: Actionable guidance (3-5 items)
+        example:
+        - '["Try to maintain your current bedtime of around 11 PM"]'
+        items:
+          type: string
+        type: array
+      observations:
+        description: Observations about patterns (3-6 items)
+        example:
+        - '["Average duration of 7.2 hours meets recommended guidelines"]'
+        items:
+          type: string
+        type: array
+      summary:
+        description: Summary of sleep patterns (2-3 sentences)
+        example: Your sleep has been fairly consistent this week...
+        type: string
+    type: object
+  github_com_blaisecz_sleep-tracker_internal_domain.MetricsResponse:
+    description: Sleep metrics response with window statistics.
+    properties:
+      daily_overall:
+        allOf:
+        - $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.DailyOverallMetrics'
+        description: Daily overall metrics
+      per_sleep:
+        allOf:
+        - $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.PerSleepMetrics'
+        description: Per-sleep metrics
+      scores:
+        allOf:
+        - $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.DerivedScores'
+        description: Derived scores
+      window:
+        description: Analysis window
+        properties:
+          from:
+            example: "2024-01-01T00:00:00Z"
+            type: string
+          to:
+            example: "2024-01-31T23:59:59Z"
+            type: string
+        type: object
+    type: object
   github_com_blaisecz_sleep-tracker_internal_domain.PaginationResponse:
     description: Cursor-based pagination info.
     properties:
@@ -65,6 +229,26 @@ definitions:
         description: Cursor for fetching the next page (empty if no more pages)
         example: eyJpZCI6IjU1MGU4NDAwLWUyOWItNDFkNC1hNzE2LTQ0NjY1NTQ0MDAwMCJ9
         type: string
+    type: object
+  github_com_blaisecz_sleep-tracker_internal_domain.PerSleepMetrics:
+    description: Per-sleep metrics aggregated over a time window.
+    properties:
+      bedtime:
+        allOf:
+        - $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.DescriptiveStats'
+        description: Bedtime statistics in minutes after midnight
+      duration:
+        allOf:
+        - $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.DescriptiveStats'
+        description: Duration statistics in hours
+      quality:
+        allOf:
+        - $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.DescriptiveStats'
+        description: Quality statistics (1-10 scale)
+      sleep_count:
+        description: Number of sleep logs in this window
+        example: 28
+        type: integer
     type: object
   github_com_blaisecz_sleep-tracker_internal_domain.SleepLogListResponse:
     description: Paginated list of sleep logs.
@@ -182,6 +366,30 @@ definitions:
       timezone:
         description: User's preferred IANA timezone
         example: Europe/Prague
+        type: string
+    type: object
+  github_com_blaisecz_sleep-tracker_internal_domain.WindowMetrics:
+    description: Complete metrics for a time window.
+    properties:
+      daily_overall:
+        allOf:
+        - $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.DailyOverallMetrics'
+        description: Daily overall metrics (core + naps)
+      from:
+        description: Window start date
+        example: "2024-01-01T00:00:00Z"
+        type: string
+      per_sleep:
+        allOf:
+        - $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.PerSleepMetrics'
+        description: Per-sleep metrics
+      scores:
+        allOf:
+        - $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.DerivedScores'
+        description: Derived scores
+      to:
+        description: Window end date
+        example: "2024-01-31T23:59:59Z"
         type: string
     type: object
   github_com_blaisecz_sleep-tracker_pkg_problem.FieldError:
@@ -437,6 +645,129 @@ paths:
       summary: Update sleep log
       tags:
       - sleep-logs
+  /users/{userId}/sleep/chronotype:
+    get:
+      description: Compute the user's chronotype based on their sleep patterns over
+        a configurable window.
+      parameters:
+      - description: User UUID
+        example: 550e8400-e29b-41d4-a716-446655440000
+        format: uuid
+        in: path
+        name: userId
+        required: true
+        type: string
+      - default: 30
+        description: Number of days to analyze
+        in: query
+        maximum: 365
+        minimum: 1
+        name: window_days
+        type: integer
+      - default: 7
+        description: Minimum sleep logs required
+        in: query
+        maximum: 100
+        minimum: 1
+        name: min_sleeps
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Chronotype analysis result
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.ChronotypeResult'
+        "400":
+          description: Invalid query parameters
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+        "500":
+          description: Server error
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+      summary: Get user chronotype
+      tags:
+      - sleep-insights
+  /users/{userId}/sleep/insights:
+    get:
+      description: Generate comprehensive sleep insights using chronotype, metrics,
+        and LLM analysis.
+      parameters:
+      - description: User UUID
+        example: 550e8400-e29b-41d4-a716-446655440000
+        format: uuid
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sleep insights with LLM analysis
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.InsightsResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+        "500":
+          description: Server error
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+        "503":
+          description: LLM service unavailable
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+      summary: Get LLM-powered sleep insights
+      tags:
+      - sleep-insights
+  /users/{userId}/sleep/metrics:
+    get:
+      description: Compute per-sleep and per-day sleep metrics over a configurable
+        window.
+      parameters:
+      - description: User UUID
+        example: 550e8400-e29b-41d4-a716-446655440000
+        format: uuid
+        in: path
+        name: userId
+        required: true
+        type: string
+      - default: 30
+        description: Number of days to analyze
+        in: query
+        maximum: 365
+        minimum: 1
+        name: window_days
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sleep metrics
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.MetricsResponse'
+        "400":
+          description: Invalid query parameters
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+        "500":
+          description: Server error
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+      summary: Get sleep metrics
+      tags:
+      - sleep-insights
 swagger: "2.0"
 tags:
 - description: User management endpoints

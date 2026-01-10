@@ -336,9 +336,234 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/users/{userId}/sleep/chronotype": {
+            "get": {
+                "description": "Compute the user's chronotype based on their sleep patterns over a configurable window.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sleep-insights"
+                ],
+                "summary": "Get user chronotype",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "description": "User UUID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "maximum": 365,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 30,
+                        "description": "Number of days to analyze",
+                        "name": "window_days",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 7,
+                        "description": "Minimum sleep logs required",
+                        "name": "min_sleeps",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Chronotype analysis result",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.ChronotypeResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid query parameters",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{userId}/sleep/insights": {
+            "get": {
+                "description": "Generate comprehensive sleep insights using chronotype, metrics, and LLM analysis.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sleep-insights"
+                ],
+                "summary": "Get LLM-powered sleep insights",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "description": "User UUID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sleep insights with LLM analysis",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.InsightsResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    },
+                    "503": {
+                        "description": "LLM service unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{userId}/sleep/metrics": {
+            "get": {
+                "description": "Compute per-sleep and per-day sleep metrics over a configurable window.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sleep-insights"
+                ],
+                "summary": "Get sleep metrics",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "description": "User UUID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "maximum": 365,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 30,
+                        "description": "Number of days to analyze",
+                        "name": "window_days",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sleep metrics",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.MetricsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid query parameters",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "github_com_blaisecz_sleep-tracker_internal_domain.ChronotypeResult": {
+            "description": "Chronotype analysis result.",
+            "type": "object",
+            "properties": {
+                "chronotype": {
+                    "description": "Chronotype classification",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.ChronotypeType"
+                        }
+                    ],
+                    "example": "intermediate"
+                },
+                "mid_sleep_local_time": {
+                    "description": "Mid-sleep time in local timezone (HH:MM format)",
+                    "type": "string",
+                    "example": "03:45"
+                },
+                "mid_sleep_minutes_after_midnight": {
+                    "description": "Minutes after midnight for mid-sleep",
+                    "type": "integer",
+                    "example": 225
+                },
+                "sleeps_used": {
+                    "description": "Number of sleep logs used in calculation",
+                    "type": "integer",
+                    "example": 28
+                },
+                "window_days": {
+                    "description": "Number of days in the analysis window",
+                    "type": "integer",
+                    "example": 30
+                }
+            }
+        },
+        "github_com_blaisecz_sleep-tracker_internal_domain.ChronotypeType": {
+            "description": "Chronotype classification based on mid-sleep time.",
+            "type": "string",
+            "enum": [
+                "early_bird",
+                "intermediate",
+                "night_owl",
+                "unknown"
+            ],
+            "x-enum-varnames": [
+                "ChronotypeEarlyBird",
+                "ChronotypeIntermediate",
+                "ChronotypeNightOwl",
+                "ChronotypeUnknown"
+            ]
+        },
         "github_com_blaisecz_sleep-tracker_internal_domain.CreateSleepLogRequest": {
             "description": "Request payload for recording a sleep session.",
             "type": "object",
@@ -406,6 +631,195 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_blaisecz_sleep-tracker_internal_domain.DailyOverallMetrics": {
+            "description": "Daily total sleep metrics (core + naps combined).",
+            "type": "object",
+            "properties": {
+                "daily_sufficiency_score": {
+                    "description": "Percentage of days meeting target (0-100)",
+                    "type": "number",
+                    "example": 73.3
+                },
+                "days_count": {
+                    "description": "Number of days with sleep data",
+                    "type": "integer",
+                    "example": 30
+                },
+                "days_meeting_target": {
+                    "description": "Number of days meeting the target",
+                    "type": "integer",
+                    "example": 22
+                },
+                "target_hours": {
+                    "description": "Target hours for sufficiency calculation",
+                    "type": "number",
+                    "example": 7
+                },
+                "total_daily_hours": {
+                    "description": "Total daily sleep hours statistics",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.DescriptiveStats"
+                        }
+                    ]
+                }
+            }
+        },
+        "github_com_blaisecz_sleep-tracker_internal_domain.DerivedScores": {
+            "description": "Derived scores based on sleep metrics.",
+            "type": "object",
+            "properties": {
+                "consistency_score": {
+                    "description": "Consistency score based on bedtime variability (0-100)",
+                    "type": "number",
+                    "example": 75
+                },
+                "overall_sleep_score": {
+                    "description": "Overall sleep score combining factors (0-100)",
+                    "type": "number",
+                    "example": 77.5
+                },
+                "sufficiency_score": {
+                    "description": "Sufficiency score based on duration meeting targets (0-100)",
+                    "type": "number",
+                    "example": 80
+                }
+            }
+        },
+        "github_com_blaisecz_sleep-tracker_internal_domain.DescriptiveStats": {
+            "description": "Basic statistical measures for a metric.",
+            "type": "object",
+            "properties": {
+                "avg": {
+                    "type": "number",
+                    "example": 7.2
+                },
+                "max": {
+                    "type": "number",
+                    "example": 9
+                },
+                "min": {
+                    "type": "number",
+                    "example": 5.5
+                },
+                "std": {
+                    "type": "number",
+                    "example": 0.8
+                }
+            }
+        },
+        "github_com_blaisecz_sleep-tracker_internal_domain.InsightsResponse": {
+            "description": "Complete sleep insights response.",
+            "type": "object",
+            "properties": {
+                "chronotype": {
+                    "description": "Chronotype analysis",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.ChronotypeResult"
+                        }
+                    ]
+                },
+                "insights": {
+                    "description": "LLM-generated insights",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.LLMInsightsOutput"
+                        }
+                    ]
+                },
+                "metrics": {
+                    "description": "Metrics for different time windows",
+                    "type": "object",
+                    "properties": {
+                        "history": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.WindowMetrics"
+                        },
+                        "last_night": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.WindowMetrics"
+                        },
+                        "recent": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.WindowMetrics"
+                        }
+                    }
+                }
+            }
+        },
+        "github_com_blaisecz_sleep-tracker_internal_domain.LLMInsightsOutput": {
+            "description": "LLM-generated sleep insights.",
+            "type": "object",
+            "properties": {
+                "guidance": {
+                    "description": "Actionable guidance (3-5 items)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "[\"Try to maintain your current bedtime of around 11 PM\"]"
+                    ]
+                },
+                "observations": {
+                    "description": "Observations about patterns (3-6 items)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "[\"Average duration of 7.2 hours meets recommended guidelines\"]"
+                    ]
+                },
+                "summary": {
+                    "description": "Summary of sleep patterns (2-3 sentences)",
+                    "type": "string",
+                    "example": "Your sleep has been fairly consistent this week..."
+                }
+            }
+        },
+        "github_com_blaisecz_sleep-tracker_internal_domain.MetricsResponse": {
+            "description": "Sleep metrics response with window statistics.",
+            "type": "object",
+            "properties": {
+                "daily_overall": {
+                    "description": "Daily overall metrics",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.DailyOverallMetrics"
+                        }
+                    ]
+                },
+                "per_sleep": {
+                    "description": "Per-sleep metrics",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.PerSleepMetrics"
+                        }
+                    ]
+                },
+                "scores": {
+                    "description": "Derived scores",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.DerivedScores"
+                        }
+                    ]
+                },
+                "window": {
+                    "description": "Analysis window",
+                    "type": "object",
+                    "properties": {
+                        "from": {
+                            "type": "string",
+                            "example": "2024-01-01T00:00:00Z"
+                        },
+                        "to": {
+                            "type": "string",
+                            "example": "2024-01-31T23:59:59Z"
+                        }
+                    }
+                }
+            }
+        },
         "github_com_blaisecz_sleep-tracker_internal_domain.PaginationResponse": {
             "description": "Cursor-based pagination info.",
             "type": "object",
@@ -419,6 +833,41 @@ const docTemplate = `{
                     "description": "Cursor for fetching the next page (empty if no more pages)",
                     "type": "string",
                     "example": "eyJpZCI6IjU1MGU4NDAwLWUyOWItNDFkNC1hNzE2LTQ0NjY1NTQ0MDAwMCJ9"
+                }
+            }
+        },
+        "github_com_blaisecz_sleep-tracker_internal_domain.PerSleepMetrics": {
+            "description": "Per-sleep metrics aggregated over a time window.",
+            "type": "object",
+            "properties": {
+                "bedtime": {
+                    "description": "Bedtime statistics in minutes after midnight",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.DescriptiveStats"
+                        }
+                    ]
+                },
+                "duration": {
+                    "description": "Duration statistics in hours",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.DescriptiveStats"
+                        }
+                    ]
+                },
+                "quality": {
+                    "description": "Quality statistics (1-10 scale)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.DescriptiveStats"
+                        }
+                    ]
+                },
+                "sleep_count": {
+                    "description": "Number of sleep logs in this window",
+                    "type": "integer",
+                    "example": 28
                 }
             }
         },
@@ -579,6 +1028,46 @@ const docTemplate = `{
                     "description": "User's preferred IANA timezone",
                     "type": "string",
                     "example": "Europe/Prague"
+                }
+            }
+        },
+        "github_com_blaisecz_sleep-tracker_internal_domain.WindowMetrics": {
+            "description": "Complete metrics for a time window.",
+            "type": "object",
+            "properties": {
+                "daily_overall": {
+                    "description": "Daily overall metrics (core + naps)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.DailyOverallMetrics"
+                        }
+                    ]
+                },
+                "from": {
+                    "description": "Window start date",
+                    "type": "string",
+                    "example": "2024-01-01T00:00:00Z"
+                },
+                "per_sleep": {
+                    "description": "Per-sleep metrics",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.PerSleepMetrics"
+                        }
+                    ]
+                },
+                "scores": {
+                    "description": "Derived scores",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.DerivedScores"
+                        }
+                    ]
+                },
+                "to": {
+                    "description": "Window end date",
+                    "type": "string",
+                    "example": "2024-01-31T23:59:59Z"
                 }
             }
         },
