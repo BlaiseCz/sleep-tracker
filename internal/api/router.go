@@ -30,6 +30,7 @@ func (rt *Router) Setup() http.Handler {
 
 	// Middleware
 	r.Use(middleware.Recovery)
+	r.Use(middleware.Tracing)
 	r.Use(middleware.Logger)
 
 	// Health check
@@ -65,6 +66,7 @@ func (rt *Router) Setup() http.Handler {
 				r.Get("/chronotype", rt.insightsHandler.GetChronotype)
 				r.Get("/metrics", rt.insightsHandler.GetMetrics)
 				r.Get("/insights", rt.insightsHandler.GetInsights)
+				r.Post("/insights/feedback", rt.insightsHandler.PostFeedback)
 			})
 		})
 	})

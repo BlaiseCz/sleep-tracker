@@ -51,6 +51,9 @@ deps:
 seed:
 	go run ./scripts/seed/main.go
 
+langfuse-test:
+	@set -a && [ -f .env ] && . ./.env; go run ./scripts/langfuse-test/main.go
+
 # =============================================================================
 # Docker
 # =============================================================================

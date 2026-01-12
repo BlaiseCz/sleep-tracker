@@ -13,8 +13,14 @@ type Config struct {
 	Seed        bool
 
 	// OpenAI configuration
-	OpenAIAPIKey            string
+	OpenAIAPIKey             string
 	OpenAISleepInsightsModel string
+
+	// Langfuse configuration
+	LangfuseBaseURL   string
+	LangfusePublicKey string
+	LangfuseSecretKey string
+	LangfuseEnv       string
 }
 
 func Load() *Config {
@@ -27,8 +33,13 @@ func Load() *Config {
 		LogLevel:    getEnv("LOG_LEVEL", "info"),
 		Seed:        getEnv("SEED", "false") == "true",
 
-		OpenAIAPIKey:            getEnv("OPENAI_API_KEY", ""),
+		OpenAIAPIKey:             getEnv("OPENAI_API_KEY", ""),
 		OpenAISleepInsightsModel: getEnv("OPENAI_SLEEP_INSIGHTS_MODEL", "gpt-4o-mini"),
+
+		LangfuseBaseURL:   getEnv("LANGFUSE_BASE_URL", ""),
+		LangfusePublicKey: getEnv("LANGFUSE_PUBLIC_KEY", ""),
+		LangfuseSecretKey: getEnv("LANGFUSE_SECRET_KEY", ""),
+		LangfuseEnv:       getEnv("LANGFUSE_ENV", "development"),
 	}
 }
 

@@ -2,12 +2,16 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/blaisecz/sleep-tracker/internal/domain"
 	"github.com/blaisecz/sleep-tracker/internal/llm"
 	"github.com/blaisecz/sleep-tracker/internal/repository"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -48,6 +52,16 @@ func NewInsightsService(
 }
 
 func (s *insightsService) Generate(ctx context.Context, userID uuid.UUID) (*domain.InsightsResponse, error) {
+	tracer := otel.Tracer("sleep-tracker-api/insights")
+	ctx, span := tracer.Start(ctx, "InsightsService.Generate",
+		trace.WithAttributes(
+			attribute.String("user.id", userID.String()),
+			attribute.Int("history.window_days", HistoryWindowDays),
+			attribute.Int("recent.window_days", RecentWindowDays),
+		),
+	)
+	defer span.End()
+
 	// Validate user exists
 	exists, err := s.userRepo.Exists(ctx, userID)
 	if err != nil {
@@ -58,6 +72,18 @@ func (s *insightsService) Generate(ctx context.Context, userID uuid.UUID) (*doma
 	}
 
 	now := time.Now().UTC()
+
+	// Attach high-level input metadata for Langfuse at the start
+	inputPayload := map[string]any{
+		"user_id":                      userID.String(),
+		"timestamp":                    now.Format(time.RFC3339),
+		"history_window_days":          HistoryWindowDays,
+		"recent_window_days":           RecentWindowDays,
+		"last_night_max_lookback_days": 7,
+	}
+	if inputJSON, err := json.Marshal(inputPayload); err == nil {
+		span.SetAttributes(attribute.String("langfuse.observation.input", string(inputJSON)))
+	}
 
 	// Compute chronotype (using history window)
 	chronotype, err := s.chronotypeService.Compute(ctx, userID, HistoryWindowDays, DefaultChronotypeMinSleeps)
@@ -108,6 +134,11 @@ func (s *insightsService) Generate(ctx context.Context, userID uuid.UUID) (*doma
 	response.Metrics.Recent = *recentMetrics
 	response.Metrics.LastNight = *lastNightMetrics
 
+	// Attach final response as Langfuse output
+	if outputJSON, err := json.Marshal(response); err == nil {
+		span.SetAttributes(attribute.String("langfuse.observation.output", string(outputJSON)))
+	}
+
 	return response, nil
 }
 
@@ -116,7 +147,7 @@ func (s *insightsService) computeLastNightMetrics(ctx context.Context, userID uu
 	// Look back up to 7 days to find the most recent day with sleep
 	for daysBack := 0; daysBack < 7; daysBack++ {
 		targetDate := now.AddDate(0, 0, -daysBack)
-		
+
 		// Define the day boundaries (midnight to midnight in UTC, but we'll use a generous window)
 		dayStart := time.Date(targetDate.Year(), targetDate.Month(), targetDate.Day(), 0, 0, 0, 0, time.UTC)
 		dayEnd := dayStart.AddDate(0, 0, 1)
@@ -136,7 +167,7 @@ func (s *insightsService) computeLastNightMetrics(ctx context.Context, userID uu
 	// No recent sleep data found, return empty metrics for today
 	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	todayEnd := todayStart.AddDate(0, 0, 1)
-	
+
 	return &domain.WindowMetrics{
 		From: todayStart,
 		To:   todayEnd,

@@ -8,6 +8,8 @@ services:
     container_name: sleep-tracker-api
     ports:
       - "8080:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Allows reaching host services
     environment:
       - PORT=8080
       - DATABASE_URL=postgres://sleepuser:sleeppass@postgres:5432/sleeptracker?sslmode=disable
@@ -15,6 +17,11 @@ services:
       - SEED=${SEED:-false}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENAI_SLEEP_INSIGHTS_MODEL=${OPENAI_SLEEP_INSIGHTS_MODEL:-gpt-4o-mini}
+      # Langfuse - always use host.docker.internal inside container (not localhost!)
+      - LANGFUSE_BASE_URL=http://host.docker.internal:3001
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY}
+      - LANGFUSE_ENV=${LANGFUSE_ENV:-development}
     depends_on:
       postgres:
         condition: service_healthy

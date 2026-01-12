@@ -9,12 +9,19 @@ services:
       dockerfile: docker/Dockerfile.dev
     entrypoint: []
     command: ["air", "-c", ".air.toml"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Allows reaching host services (like Langfuse)
     volumes:
       - .:/app
       - go_mod_cache:/go/pkg/mod
     environment:
       - LOG_LEVEL=debug
       - SEED=true
+      # Langfuse - always use host.docker.internal inside container (not localhost!)
+      - LANGFUSE_BASE_URL=http://host.docker.internal:3001
+      - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY}
+      - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY}
+      - LANGFUSE_ENV=${LANGFUSE_ENV:-development}
     ports:
       - "8080:8080"
       - "2345:2345"  # Delve debugger

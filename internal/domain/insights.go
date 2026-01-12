@@ -7,10 +7,10 @@ import "time"
 type ChronotypeType string
 
 const (
-	ChronotypeEarlyBird     ChronotypeType = "early_bird"
-	ChronotypeIntermediate  ChronotypeType = "intermediate"
-	ChronotypeNightOwl      ChronotypeType = "night_owl"
-	ChronotypeUnknown       ChronotypeType = "unknown"
+	ChronotypeEarlyBird    ChronotypeType = "early_bird"
+	ChronotypeIntermediate ChronotypeType = "intermediate"
+	ChronotypeNightOwl     ChronotypeType = "night_owl"
+	ChronotypeUnknown      ChronotypeType = "unknown"
 )
 
 // ChronotypeResult contains the computed chronotype and supporting data.
@@ -151,4 +151,6 @@ type InsightsResponse struct {
 	} `json:"metrics"`
 	// LLM-generated insights
 	Insights LLMInsightsOutput `json:"insights"`
+	// Trace ID for feedback (optional, only present when Langfuse is enabled)
+	TraceID string `json:"trace_id,omitempty" example:"550e8400-e29b-41d4-a716-446655440000"`
 }

@@ -4,7 +4,6 @@ A Go-based REST API service for tracking sleep patterns and quality. Users can l
 
 ## Features
 
-- **User Management** — Create users with IANA timezone preferences
 - **Sleep Logging** — Record CORE (night) and NAP (daytime) sleep sessions with quality ratings (1-10)
 - **Overlap Prevention** — Automatic detection and rejection of overlapping sleep periods (CORE ↔ NAP ↔ NAP)
 - **Idempotent Requests** — Optional `client_request_id` ensures safe retries without duplicate entries
@@ -12,6 +11,8 @@ A Go-based REST API service for tracking sleep patterns and quality. Users can l
 - **Timezone Support** — UTC storage with automatic local time conversion in responses
 - **RFC 9457 Errors** — Standardized `application/problem+json` error responses
 - **Swagger/OpenAPI** — Interactive API documentation at `/swagger/index.html`
+- **Insights Endpoint** — Optional `/sleep/insights` for LLM-powered sleep analysis (requires OpenAI API key)
+- **Observability** — Structured logging with correlation IDs, request tracing, and performance metrics (with Langfuse)
 
 ---
 

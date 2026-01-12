@@ -169,6 +169,11 @@ definitions:
           recent:
             $ref: '#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.WindowMetrics'
         type: object
+      trace_id:
+        description: Trace ID for feedback (optional, only present when Langfuse is
+          enabled)
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
     type: object
   github_com_blaisecz_sleep-tracker_internal_domain.LLMInsightsOutput:
     description: LLM-generated sleep insights.
@@ -412,6 +417,24 @@ definitions:
       title:
         type: string
       type:
+        type: string
+    type: object
+  internal_api_handler.FeedbackRequest:
+    description: Request body for submitting feedback on insights.
+    properties:
+      comment:
+        description: Optional comment
+        example: The insights were helpful!
+        type: string
+      score:
+        description: Rating score (1-5)
+        example: 4
+        maximum: 5
+        minimum: 1
+        type: integer
+      trace_id:
+        description: Trace ID from the insights response
+        example: 550e8400-e29b-41d4-a716-446655440000
         type: string
     type: object
 info:
@@ -725,6 +748,42 @@ paths:
           schema:
             $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
       summary: Get LLM-powered sleep insights
+      tags:
+      - sleep-insights
+  /users/{userId}/sleep/insights/feedback:
+    post:
+      consumes:
+      - application/json
+      description: Submit a user rating and optional comment for a previous insights
+        response.
+      parameters:
+      - description: User UUID
+        example: 550e8400-e29b-41d4-a716-446655440000
+        format: uuid
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: Feedback request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_handler.FeedbackRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Feedback submitted
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+        "500":
+          description: Server error
+          schema:
+            $ref: '#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem'
+      summary: Submit feedback on sleep insights
       tags:
       - sleep-insights
   /users/{userId}/sleep/metrics:

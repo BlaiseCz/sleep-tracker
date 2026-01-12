@@ -9,6 +9,9 @@ import (
 	"github.com/blaisecz/sleep-tracker/internal/domain"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var (
@@ -112,6 +115,17 @@ func (c *OpenAIClient) GenerateInsights(ctx context.Context, insightsCtx *domain
 		return nil, ErrOpenAIUnavailable
 	}
 
+	tracer := otel.Tracer("sleep-tracker-api/llm")
+	ctx, span := tracer.Start(ctx, "OpenAIClient.GenerateInsights",
+		trace.WithAttributes(
+			attribute.String("langfuse.observation.type", "generation"),
+			attribute.String("llm.model", c.model),
+			attribute.String("model", c.model),
+			attribute.String("langfuse.observation.model.name", c.model),
+		),
+	)
+	defer span.End()
+
 	// Serialize context to JSON
 	contextJSON, err := json.MarshalIndent(insightsCtx, "", "  ")
 	if err != nil {
@@ -119,6 +133,19 @@ func (c *OpenAIClient) GenerateInsights(ctx context.Context, insightsCtx *domain
 	}
 
 	userPrompt := fmt.Sprintf(userPromptTemplate, string(contextJSON))
+
+	// Attach prompts and context as Langfuse observation input
+	inputPayload := map[string]any{
+		"system_prompt":    systemPrompt,
+		"user_prompt":      userPrompt,
+		"insights_context": insightsCtx,
+	}
+	if inputJSON, err := json.Marshal(inputPayload); err == nil {
+		span.SetAttributes(
+			attribute.String("langfuse.observation.input", string(inputJSON)),
+			attribute.String("gen_ai.prompt", userPrompt),
+		)
+	}
 
 	// Call OpenAI
 	resp, err := c.client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
@@ -129,6 +156,7 @@ func (c *OpenAIClient) GenerateInsights(ctx context.Context, insightsCtx *domain
 		},
 	})
 	if err != nil {
+		span.RecordError(err)
 		return nil, fmt.Errorf("%w: %v", ErrOpenAIRequest, err)
 	}
 
@@ -141,8 +169,14 @@ func (c *OpenAIClient) GenerateInsights(ctx context.Context, insightsCtx *domain
 	// Parse the JSON response
 	var output domain.LLMInsightsOutput
 	if err := json.Unmarshal([]byte(content), &output); err != nil {
+		span.RecordError(err)
 		return nil, fmt.Errorf("%w: %v", ErrOpenAIResponse, err)
 	}
+
+	// Attach model output as Langfuse observation output
+	span.SetAttributes(
+		attribute.String("langfuse.observation.output", content),
+	)
 
 	return &output, nil
 }

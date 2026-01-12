@@ -453,6 +453,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/users/{userId}/sleep/insights/feedback": {
+            "post": {
+                "description": "Submit a user rating and optional comment for a previous insights response.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sleep-insights"
+                ],
+                "summary": "Submit feedback on sleep insights",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "550e8400-e29b-41d4-a716-446655440000",
+                        "description": "User UUID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Feedback request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_api_handler.FeedbackRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Feedback submitted"
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_pkg_problem.Problem"
+                        }
+                    }
+                }
+            }
+        },
         "/users/{userId}/sleep/metrics": {
             "get": {
                 "description": "Compute per-sleep and per-day sleep metrics over a configurable window.",
@@ -742,6 +794,11 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_blaisecz_sleep-tracker_internal_domain.WindowMetrics"
                         }
                     }
+                },
+                "trace_id": {
+                    "description": "Trace ID for feedback (optional, only present when Langfuse is enabled)",
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
                 }
             }
         },
@@ -1102,6 +1159,29 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "string"
+                }
+            }
+        },
+        "internal_api_handler.FeedbackRequest": {
+            "description": "Request body for submitting feedback on insights.",
+            "type": "object",
+            "properties": {
+                "comment": {
+                    "description": "Optional comment",
+                    "type": "string",
+                    "example": "The insights were helpful!"
+                },
+                "score": {
+                    "description": "Rating score (1-5)",
+                    "type": "integer",
+                    "maximum": 5,
+                    "minimum": 1,
+                    "example": 4
+                },
+                "trace_id": {
+                    "description": "Trace ID from the insights response",
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
                 }
             }
         }

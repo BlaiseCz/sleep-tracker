@@ -2,12 +2,17 @@ package service
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"math"
 	"time"
 
 	"github.com/blaisecz/sleep-tracker/internal/domain"
 	"github.com/blaisecz/sleep-tracker/internal/repository"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -77,6 +82,38 @@ func (s *metricsService) Compute(ctx context.Context, userID uuid.UUID, windowDa
 }
 
 func (s *metricsService) ComputeWindow(ctx context.Context, userID uuid.UUID, from, to time.Time) (*domain.WindowMetrics, error) {
+	tracer := otel.Tracer("sleep-tracker-api/metrics")
+	ctx, span := tracer.Start(ctx, "MetricsService.ComputeWindow",
+		trace.WithAttributes(
+			attribute.String("user.id", userID.String()),
+			attribute.String("window.from", from.Format(time.RFC3339)),
+			attribute.String("window.to", to.Format(time.RFC3339)),
+		),
+	)
+	defer span.End()
+
+	// Derive window length in days for readability
+	windowDuration := to.Sub(from)
+	windowDays := int(windowDuration.Hours() / 24)
+	if windowDays < 1 {
+		windowDays = 1
+	}
+	span.SetAttributes(
+		attribute.Int("window.days", windowDays),
+		attribute.String("window.description", fmt.Sprintf("%dd window", windowDays)),
+	)
+
+	// Attach input payload for Langfuse
+	inputPayload := map[string]any{
+		"user_id":     userID.String(),
+		"from":        from.Format(time.RFC3339),
+		"to":          to.Format(time.RFC3339),
+		"window_days": windowDays,
+	}
+	if inputJSON, err := json.Marshal(inputPayload); err == nil {
+		span.SetAttributes(attribute.String("langfuse.observation.input", string(inputJSON)))
+	}
+
 	// Fetch sleep logs in the window (by EndAt)
 	logs, err := s.sleepLogRepo.ListByEndRange(ctx, userID, from, to)
 	if err != nil {
@@ -97,15 +134,20 @@ func (s *metricsService) ComputeWindow(ctx context.Context, userID uuid.UUID, fr
 	// Calculate derived scores
 	result.Scores = computeDerivedScores(result.PerSleep, result.DailyOverall)
 
+	// Attach output payload for Langfuse
+	if outputJSON, err := json.Marshal(result); err == nil {
+		span.SetAttributes(attribute.String("langfuse.observation.output", string(outputJSON)))
+	}
+
 	return result, nil
 }
 
 // sleepData holds extracted data from a single sleep log.
 type sleepData struct {
-	durationHours   float64
-	bedtimeMinutes  int
-	quality         int
-	localDate       string // YYYY-MM-DD format for grouping
+	durationHours  float64
+	bedtimeMinutes int
+	quality        int
+	localDate      string // YYYY-MM-DD format for grouping
 }
 
 // extractSleepData extracts relevant data from a sleep log.

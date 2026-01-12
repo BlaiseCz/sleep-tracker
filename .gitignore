@@ -44,6 +44,3 @@ tmp/
 
 # Vendor (if not committing)
 # vendor/
-
-docker-compose.yml
-.env

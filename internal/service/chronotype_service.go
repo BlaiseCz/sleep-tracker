@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"time"
@@ -9,6 +10,8 @@ import (
 	"github.com/blaisecz/sleep-tracker/internal/domain"
 	"github.com/blaisecz/sleep-tracker/internal/repository"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const (
@@ -20,8 +23,8 @@ const (
 	DefaultChronotypeMinSleeps  = 7
 
 	// Chronotype thresholds (minutes after midnight for mid-sleep)
-	EarlyBirdThreshold     = 150 // < 150 = early bird (mid-sleep before 2:30 AM)
-	IntermediateThreshold  = 270 // 150-269 = intermediate, >= 270 = night owl (4:30 AM)
+	EarlyBirdThreshold    = 150 // < 150 = early bird (mid-sleep before 2:30 AM)
+	IntermediateThreshold = 270 // 150-269 = intermediate, >= 270 = night owl (4:30 AM)
 )
 
 // ChronotypeService computes chronotype from sleep logs.
@@ -44,6 +47,10 @@ func NewChronotypeService(sleepLogRepo repository.SleepLogRepository, userRepo r
 }
 
 func (s *chronotypeService) Compute(ctx context.Context, userID uuid.UUID, windowDays, minSleeps int) (*domain.ChronotypeResult, error) {
+	tracer := otel.Tracer("sleep-tracker-api/chronotype")
+	ctx, span := tracer.Start(ctx, "ChronotypeService.Compute")
+	defer span.End()
+
 	// Validate user exists
 	exists, err := s.userRepo.Exists(ctx, userID)
 	if err != nil {
@@ -61,9 +68,28 @@ func (s *chronotypeService) Compute(ctx context.Context, userID uuid.UUID, windo
 		minSleeps = DefaultChronotypeMinSleeps
 	}
 
+	span.SetAttributes(
+		attribute.String("user.id", userID.String()),
+		attribute.Int("window_days", windowDays),
+		attribute.Int("min_sleeps", minSleeps),
+		attribute.String("window.description", fmt.Sprintf("%dd window", windowDays)),
+	)
+
 	// Calculate time window
 	now := time.Now().UTC()
 	from := now.AddDate(0, 0, -windowDays)
+
+	// Attach input payload for Langfuse
+	inputPayload := map[string]any{
+		"user_id":     userID.String(),
+		"window_days": windowDays,
+		"min_sleeps":  minSleeps,
+		"from":        from.Format(time.RFC3339),
+		"to":          now.Format(time.RFC3339),
+	}
+	if inputJSON, err := json.Marshal(inputPayload); err == nil {
+		span.SetAttributes(attribute.String("langfuse.observation.input", string(inputJSON)))
+	}
 
 	// Fetch sleep logs in the window (by EndAt)
 	logs, err := s.sleepLogRepo.ListByEndRange(ctx, userID, from, now)
@@ -118,6 +144,11 @@ func (s *chronotypeService) Compute(ctx context.Context, userID uuid.UUID, windo
 
 	// Classify chronotype
 	result.Chronotype = classifyChronotype(medianMid)
+
+	// Attach output payload for Langfuse
+	if outputJSON, err := json.Marshal(result); err == nil {
+		span.SetAttributes(attribute.String("langfuse.observation.output", string(outputJSON)))
+	}
 
 	return result, nil
 }

@@ -7,11 +7,13 @@ import (
 	"strconv"
 
 	"github.com/blaisecz/sleep-tracker/internal/domain"
+	"github.com/blaisecz/sleep-tracker/internal/langfuse"
 	"github.com/blaisecz/sleep-tracker/internal/llm"
 	"github.com/blaisecz/sleep-tracker/internal/service"
 	"github.com/blaisecz/sleep-tracker/pkg/problem"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // InsightsHandler handles sleep insights endpoints.
@@ -19,6 +21,7 @@ type InsightsHandler struct {
 	chronotypeService service.ChronotypeService
 	metricsService    service.MetricsService
 	insightsService   service.InsightsService
+	langfuseClient    langfuse.Client
 }
 
 // NewInsightsHandler creates a new InsightsHandler.
@@ -26,11 +29,13 @@ func NewInsightsHandler(
 	chronotypeService service.ChronotypeService,
 	metricsService service.MetricsService,
 	insightsService service.InsightsService,
+	langfuseClient langfuse.Client,
 ) *InsightsHandler {
 	return &InsightsHandler{
 		chronotypeService: chronotypeService,
 		metricsService:    metricsService,
 		insightsService:   insightsService,
+		langfuseClient:    langfuseClient,
 	}
 }
 
@@ -160,8 +165,79 @@ func (h *InsightsHandler) GetInsights(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Attach OTEL trace ID (if present) to response for feedback linking
+	span := trace.SpanFromContext(r.Context())
+	if span.SpanContext().IsValid() {
+		result.TraceID = span.SpanContext().TraceID().String()
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)
+}
+
+// FeedbackRequest is the request body for insights feedback.
+// @Description Request body for submitting feedback on insights.
+type FeedbackRequest struct {
+	// Trace ID from the insights response
+	TraceID string `json:"trace_id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	// Rating score (1-5)
+	Score int `json:"score" example:"4" minimum:"1" maximum:"5"`
+	// Optional comment
+	Comment string `json:"comment,omitempty" example:"The insights were helpful!"`
+}
+
+// PostFeedback handles POST /v1/users/{userId}/sleep/insights/feedback
+// @Summary Submit feedback on sleep insights
+// @Description Submit a user rating and optional comment for a previous insights response.
+// @Tags sleep-insights
+// @Accept json
+// @Produce json
+// @Param userId path string true "User UUID" format(uuid) example(550e8400-e29b-41d4-a716-446655440000)
+// @Param body body FeedbackRequest true "Feedback request"
+// @Success 204 "Feedback submitted"
+// @Failure 400 {object} problem.Problem "Invalid request"
+// @Failure 500 {object} problem.Problem "Server error"
+// @Router /users/{userId}/sleep/insights/feedback [post]
+func (h *InsightsHandler) PostFeedback(w http.ResponseWriter, r *http.Request) {
+	userID, err := uuid.Parse(chi.URLParam(r, "userId"))
+	if err != nil {
+		problem.BadRequest("Invalid user ID format").Write(w)
+		return
+	}
+
+	var req FeedbackRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		problem.BadRequest("Invalid request body").Write(w)
+		return
+	}
+
+	// Validate required fields
+	if req.TraceID == "" {
+		problem.BadRequest("trace_id is required").Write(w)
+		return
+	}
+	if req.Score < 1 || req.Score > 5 {
+		problem.BadRequest("score must be between 1 and 5").Write(w)
+		return
+	}
+
+	// Create score in Langfuse (errors are logged but don't fail the request)
+	_ = h.langfuseClient.CreateScore(r.Context(), langfuse.ScoreInput{
+		TraceID: req.TraceID,
+		Name:    "user_rating",
+		Value:   float64(req.Score),
+		Comment: req.Comment,
+	})
+
+	// Log the feedback for debugging
+	if h.langfuseClient.IsEnabled() {
+		// Score was sent to Langfuse
+	} else {
+		// Langfuse not enabled, but we still accept feedback
+		_ = userID // suppress unused warning
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // parseIntParam parses an integer query parameter with a default value.
