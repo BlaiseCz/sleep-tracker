@@ -91,10 +91,14 @@ func TestGetInsights_IncludesTraceID(t *testing.T) {
 	r.Get("/users/{userId}/sleep/insights", handler.GetInsights)
 
 	// Attach a span with a valid TraceID to the request context so the handler can pick it up.
-	tp := trace.NewNoopTracerProvider()
-	tracer := tp.Tracer("test")
-	ctx, span := tracer.Start(context.Background(), "test-span")
-	defer span.End()
+	traceID, _ := trace.TraceIDFromHex("11111111111111111111111111111111")
+	spanID, _ := trace.SpanIDFromHex("2222222222222222")
+	sc := trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID:    traceID,
+		SpanID:     spanID,
+		TraceFlags: trace.FlagsSampled,
+	})
+	ctx := trace.ContextWithSpanContext(context.Background(), sc)
 
 	req := httptest.NewRequest(http.MethodGet, "/users/"+userID.String()+"/sleep/insights", nil).WithContext(ctx)
 	w := httptest.NewRecorder()
