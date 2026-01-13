@@ -19,6 +19,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/blaisecz/sleep-tracker/internal/api"
 	"github.com/blaisecz/sleep-tracker/internal/api/handler"
@@ -32,12 +33,20 @@ import (
 	"github.com/blaisecz/sleep-tracker/internal/telemetry"
 )
 
+const defaultLocalPromptPath = "prompts/sleep_insights_system_prompt.md"
+const promptCacheTTL = 30 * time.Second
+
 func main() {
 	// Load configuration
 	cfg := config.Load()
 
 	// Initialize OpenTelemetry tracer (exports to Langfuse when configured)
 	ctx := context.Background()
+	promptProvider := llm.CachedPromptProvider(buildSystemPromptProvider(cfg), promptCacheTTL)
+	if _, err := promptProvider(ctx); err != nil {
+		log.Printf("Failed to load system prompt at startup: %v", err)
+	}
+
 	tracerShutdown, err := telemetry.InitTracer(ctx, cfg, "sleep-tracker-api")
 	if err != nil {
 		log.Printf("Failed to initialize telemetry: %v", err)
@@ -79,7 +88,7 @@ func main() {
 	metricsService := service.NewMetricsService(sleepLogRepo, userRepo)
 
 	// Initialize OpenAI client (may be nil if not configured)
-	openaiClient := llm.NewOpenAIClient(cfg.OpenAIAPIKey, cfg.OpenAISleepInsightsModel)
+	openaiClient := llm.NewOpenAIClient(cfg.OpenAIAPIKey, cfg.OpenAISleepInsightsModel, promptProvider)
 	if openaiClient == nil {
 		log.Println("Warning: OpenAI API key not configured, insights endpoint will be unavailable")
 	}
@@ -109,5 +118,41 @@ func main() {
 	log.Printf("Starting server on %s", addr)
 	if err := http.ListenAndServe(addr, routerHandler); err != nil {
 		log.Fatalf("Server failed: %v", err)
+	}
+}
+
+func buildSystemPromptProvider(cfg *config.Config) llm.SystemPromptProvider {
+	localPath := cfg.LangfusePromptSavePath
+	if localPath == "" {
+		localPath = defaultLocalPromptPath
+	}
+
+	return func(ctx context.Context) (string, error) {
+		if cfg.LangfusePromptName != "" {
+			prompt, err := langfuse.LoadPrompt(ctx, langfuse.PromptLoaderConfig{
+				BaseURL:     cfg.LangfuseBaseURL,
+				PublicKey:   cfg.LangfusePublicKey,
+				SecretKey:   cfg.LangfuseSecretKey,
+				PromptName:  cfg.LangfusePromptName,
+				PromptLabel: cfg.LangfusePromptLabel,
+				SavePath:    localPath,
+			})
+			if err == nil {
+				return prompt, nil
+			}
+			log.Printf("Langfuse prompt '%s' unavailable (%v); attempting local fallback", cfg.LangfusePromptName, err)
+		}
+
+		if localPath != "" {
+			prompt, err := langfuse.LoadPrompt(ctx, langfuse.PromptLoaderConfig{
+				SavePath: localPath,
+			})
+			if err == nil {
+				return prompt, nil
+			}
+			log.Printf("Failed to load system prompt from %s: %v; using built-in default", localPath, err)
+		}
+
+		return llm.DefaultSystemPrompt, nil
 	}
 }

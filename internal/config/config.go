@@ -17,10 +17,13 @@ type Config struct {
 	OpenAISleepInsightsModel string
 
 	// Langfuse configuration
-	LangfuseBaseURL   string
-	LangfusePublicKey string
-	LangfuseSecretKey string
-	LangfuseEnv       string
+	LangfuseBaseURL        string
+	LangfusePublicKey      string
+	LangfuseSecretKey      string
+	LangfuseEnv            string
+	LangfusePromptName     string
+	LangfusePromptLabel    string
+	LangfusePromptSavePath string
 }
 
 func Load() *Config {
@@ -36,10 +39,13 @@ func Load() *Config {
 		OpenAIAPIKey:             getEnv("OPENAI_API_KEY", ""),
 		OpenAISleepInsightsModel: getEnv("OPENAI_SLEEP_INSIGHTS_MODEL", "gpt-4o-mini"),
 
-		LangfuseBaseURL:   getEnv("LANGFUSE_BASE_URL", ""),
-		LangfusePublicKey: getEnv("LANGFUSE_PUBLIC_KEY", ""),
-		LangfuseSecretKey: getEnv("LANGFUSE_SECRET_KEY", ""),
-		LangfuseEnv:       getEnv("LANGFUSE_ENV", "development"),
+		LangfuseBaseURL:        getEnv("LANGFUSE_BASE_URL", ""),
+		LangfusePublicKey:      getEnv("LANGFUSE_PUBLIC_KEY", ""),
+		LangfuseSecretKey:      getEnv("LANGFUSE_SECRET_KEY", ""),
+		LangfuseEnv:            getEnv("LANGFUSE_ENV", "development"),
+		LangfusePromptName:     getEnv("LANGFUSE_PROMPT_NAME", ""),
+		LangfusePromptLabel:    getEnv("LANGFUSE_PROMPT_LABEL", "production"),
+		LangfusePromptSavePath: getEnv("LANGFUSE_PROMPT_SAVE_PATH", ""),
 	}
 }
 

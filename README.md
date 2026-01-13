@@ -13,6 +13,7 @@ A Go-based REST API service for tracking sleep patterns and quality. Users can l
 - **Swagger/OpenAPI** — Interactive API documentation at `/swagger/index.html`
 - **Insights Endpoint** — Optional `/sleep/insights` for LLM-powered sleep analysis (requires OpenAI API key)
 - **Observability** — Structured logging with correlation IDs, request tracing, and performance metrics (with Langfuse)
+- **Prompt Management** — Optional Langfuse-managed system prompts with local TXT fallback for offline usage
 
 ---
 
@@ -68,6 +69,29 @@ make docker-dev
 ---
 
 ## API Endpoints
+
+| Method | Env Var | Description |
+|---------|-------------|
+| `LANGFUSE_BASE_URL` | Base URL to a Langfuse instance (e.g. `http://localhost:3001`) |
+| `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` | API credentials for traces & prompts |
+| `LANGFUSE_ENV` | Environment tag shown in Langfuse (e.g. `development`) |
+| `LANGFUSE_PROMPT_NAME` | Optional prompt slug to fetch (e.g. `sleep-insights/system`) |
+| `LANGFUSE_PROMPT_LABEL` | Prompt label to resolve (defaults to `production`) |
+| `LANGFUSE_PROMPT_SAVE_PATH` | Path to cache the prompt locally (used as offline fallback) |
+
+#### Prompt workflow
+
+1. **Create/manage your prompt** in the Langfuse UI (`Prompt Management > Prompts`). Give it a stable slug and assign the `production` label (or any label you configure via `LANGFUSE_PROMPT_LABEL`).
+2. **Configure env vars**:
+   ```bash
+   LANGFUSE_PROMPT_NAME=sleep-tracker/system
+   LANGFUSE_PROMPT_LABEL=production
+   LANGFUSE_PROMPT_SAVE_PATH=./notes/prompts/system_prompt.txt
+   ```
+3. The API downloads the prompt via the Langfuse Public API and caches it to `LANGFUSE_PROMPT_SAVE_PATH`. While Langfuse is reachable, the prompt is re-fetched automatically (default: every 30s) so you can tweak copy live without restarting the API.
+4. If Langfuse is unavailable, the cached file is used. When both Langfuse and the cache are unavailable, the built‑in default prompt from `internal/llm/openai_client.go` is used.
+
+This lets you roll out prompt tweaks directly from Langfuse while still having deterministic local development (commit the cached `.txt` file if you want reproducible prompts for teammates).
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -261,7 +285,7 @@ internal/
 ├── domain/        → Domain entities, interfaces, business rules
 ├── service/       → Business logic orchestration
 ├── repository/    → Data access (PostgreSQL via GORM)
-└── config/        → Configuration loading
+└── config/        ### Langfuse Configuration (optional)
 pkg/               → Shared utilities (pagination, problem responses)
 ```
 

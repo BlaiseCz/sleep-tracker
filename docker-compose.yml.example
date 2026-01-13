@@ -22,6 +22,9 @@ services:
       - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY}
       - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY}
       - LANGFUSE_ENV=${LANGFUSE_ENV:-development}
+      - LANGFUSE_PROMPT_NAME=${LANGFUSE_PROMPT_NAME}
+      - LANGFUSE_PROMPT_LABEL=${LANGFUSE_PROMPT_LABEL:-production}
+      - LANGFUSE_PROMPT_SAVE_PATH=${LANGFUSE_PROMPT_SAVE_PATH:-/app/notes/prompts/system_prompt.txt}
     depends_on:
       postgres:
         condition: service_healthy

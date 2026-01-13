@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/blaisecz/sleep-tracker/internal/domain"
 	"github.com/openai/openai-go/v3"
@@ -23,7 +25,7 @@ var (
 	ErrOpenAIResponse = errors.New("failed to parse OpenAI response")
 )
 
-const systemPrompt = `You are a non-medical sleep tracking assistant.
+const DefaultSystemPrompt = `You are a non-medical sleep tracking assistant.
 
 You receive aggregated sleep metrics and a chronotype classification for a single user. You must base your conclusions only on the provided data.
 
@@ -84,15 +86,69 @@ type InsightsLLM interface {
 	GenerateInsights(ctx context.Context, insightsCtx *domain.InsightsContext) (*domain.LLMInsightsOutput, error)
 }
 
+// SystemPromptProvider returns the system prompt to send to the LLM.
+type SystemPromptProvider func(ctx context.Context) (string, error)
+
+// StaticSystemPromptProvider returns a provider that always yields the given prompt.
+func StaticSystemPromptProvider(prompt string) SystemPromptProvider {
+	return func(context.Context) (string, error) {
+		return prompt, nil
+	}
+}
+
+// CachedPromptProvider wraps another provider and refreshes it based on a TTL.
+// If refresh fails, the previous prompt is kept. TTL <= 0 disables caching.
+func CachedPromptProvider(provider SystemPromptProvider, ttl time.Duration) SystemPromptProvider {
+	if ttl <= 0 {
+		return provider
+	}
+
+	var (
+		mu      sync.RWMutex
+		prompt  string
+		expires time.Time
+	)
+
+	return func(ctx context.Context) (string, error) {
+		now := time.Now()
+		mu.RLock()
+		if prompt != "" && now.Before(expires) {
+			cached := prompt
+			mu.RUnlock()
+			return cached, nil
+		}
+		mu.RUnlock()
+
+		mu.Lock()
+		defer mu.Unlock()
+		if prompt != "" && time.Now().Before(expires) {
+			return prompt, nil
+		}
+
+		fresh, err := provider(ctx)
+		if err != nil {
+			if prompt != "" {
+				return prompt, nil
+			}
+			return "", err
+		}
+
+		prompt = fresh
+		expires = time.Now().Add(ttl)
+		return prompt, nil
+	}
+}
+
 // OpenAIClient implements InsightsLLM using the OpenAI API.
 type OpenAIClient struct {
-	client openai.Client
-	model  string
+	client         openai.Client
+	model          string
+	promptProvider SystemPromptProvider
 }
 
 // NewOpenAIClient creates a new OpenAI client for generating insights.
 // Returns nil if apiKey is empty.
-func NewOpenAIClient(apiKey, model string) *OpenAIClient {
+func NewOpenAIClient(apiKey, model string, provider SystemPromptProvider) *OpenAIClient {
 	if apiKey == "" {
 		return nil
 	}
@@ -101,11 +157,16 @@ func NewOpenAIClient(apiKey, model string) *OpenAIClient {
 		model = "gpt-4o-mini"
 	}
 
+	if provider == nil {
+		provider = StaticSystemPromptProvider(DefaultSystemPrompt)
+	}
+
 	client := openai.NewClient(option.WithAPIKey(apiKey))
 
 	return &OpenAIClient{
-		client: client,
-		model:  model,
+		client:         client,
+		model:          model,
+		promptProvider: provider,
 	}
 }
 
@@ -130,6 +191,12 @@ func (c *OpenAIClient) GenerateInsights(ctx context.Context, insightsCtx *domain
 	contextJSON, err := json.MarshalIndent(insightsCtx, "", "  ")
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to serialize context: %v", ErrOpenAIRequest, err)
+	}
+
+	systemPrompt, err := c.promptProvider(ctx)
+	if err != nil {
+		span.RecordError(err)
+		return nil, fmt.Errorf("%w: failed to load system prompt: %v", ErrOpenAIRequest, err)
 	}
 
 	userPrompt := fmt.Sprintf(userPromptTemplate, string(contextJSON))
