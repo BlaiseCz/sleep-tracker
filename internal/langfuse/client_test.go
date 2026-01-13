@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestNewClient_Disabled(t *testing.T) {
@@ -91,6 +92,7 @@ func TestCreateScore_DisabledClient(t *testing.T) {
 func TestCreateTrace_EnabledClient(t *testing.T) {
 	var receivedBody map[string]any
 	var receivedAuth string
+	received := make(chan struct{})
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Check auth header
@@ -105,6 +107,7 @@ func TestCreateTrace_EnabledClient(t *testing.T) {
 
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"successes":[],"errors":[]}`))
+		close(received)
 	}))
 	defer server.Close()
 
@@ -128,6 +131,13 @@ func TestCreateTrace_EnabledClient(t *testing.T) {
 	}
 	if traceID == "" {
 		t.Error("expected non-empty trace ID")
+	}
+
+	// Wait for async call to complete
+	select {
+	case <-received:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for async request")
 	}
 
 	// Verify auth
@@ -163,11 +173,13 @@ func TestCreateTrace_EnabledClient(t *testing.T) {
 
 func TestCreateScore_EnabledClient(t *testing.T) {
 	var receivedBody map[string]any
+	received := make(chan struct{})
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		json.Unmarshal(body, &receivedBody)
 		w.WriteHeader(http.StatusOK)
+		close(received)
 	}))
 	defer server.Close()
 
@@ -186,6 +198,13 @@ func TestCreateScore_EnabledClient(t *testing.T) {
 
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
+	}
+
+	// Wait for async call to complete
+	select {
+	case <-received:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for async request")
 	}
 
 	// Verify payload structure
@@ -212,8 +231,11 @@ func TestCreateScore_EnabledClient(t *testing.T) {
 }
 
 func TestCreateTrace_ServerError(t *testing.T) {
+	received := make(chan struct{})
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
+		close(received)
 	}))
 	defer server.Close()
 
@@ -232,8 +254,15 @@ func TestCreateTrace_ServerError(t *testing.T) {
 		t.Error("expected trace ID even on error")
 	}
 
-	// Should return an error
-	if err == nil {
-		t.Error("expected error on server failure")
+	// Async calls don't return errors - they log them instead
+	if err != nil {
+		t.Errorf("expected no error (async), got %v", err)
+	}
+
+	// Wait for async call to complete
+	select {
+	case <-received:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for async request")
 	}
 }

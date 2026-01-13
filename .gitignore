@@ -44,3 +44,4 @@ tmp/
 
 # Vendor (if not committing)
 # vendor/
+notes/prompts/*

@@ -218,3 +218,49 @@ func TestPostFeedback_ValidationErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestGetChronotype_InvalidQueryParams(t *testing.T) {
+	userID := uuid.New()
+
+	handler := NewInsightsHandler(
+		&mockChronotypeService{},
+		&mockMetricsService{},
+		&mockInsightsService{},
+		&mockLangfuseClient{enabled: false},
+	)
+
+	r := chi.NewRouter()
+	r.Get("/users/{userId}/sleep/chronotype", handler.GetChronotype)
+
+	req := httptest.NewRequest(http.MethodGet, "/users/"+userID.String()+"/sleep/chronotype?window_days=abc", nil)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestGetMetrics_InvalidWindowDays(t *testing.T) {
+	userID := uuid.New()
+
+	handler := NewInsightsHandler(
+		&mockChronotypeService{},
+		&mockMetricsService{},
+		&mockInsightsService{},
+		&mockLangfuseClient{enabled: false},
+	)
+
+	r := chi.NewRouter()
+	r.Get("/users/{userId}/sleep/metrics", handler.GetMetrics)
+
+	req := httptest.NewRequest(http.MethodGet, "/users/"+userID.String()+"/sleep/metrics?window_days=not-an-int", nil)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", w.Code)
+	}
+}

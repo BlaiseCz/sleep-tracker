@@ -20,13 +20,13 @@ const (
 
 type SleepLog struct {
 	ID              uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
-	UserID          uuid.UUID `gorm:"type:uuid;not null;index:idx_sleep_logs_user_start" json:"user_id"`
+	UserID          uuid.UUID `gorm:"type:uuid;not null;index:idx_sleep_logs_user_start;uniqueIndex:idx_user_client_request,priority:1" json:"user_id"`
 	StartAt         time.Time `gorm:"not null;index:idx_sleep_logs_user_start,sort:desc" json:"start_at"`
 	EndAt           time.Time `gorm:"not null" json:"end_at"`
 	Quality         int       `gorm:"type:smallint;not null" json:"quality"`
 	Type            SleepType `gorm:"type:varchar(10);not null" json:"type"`
 	LocalTimezone   string    `gorm:"type:varchar(64);not null;default:'UTC'" json:"local_timezone"`
-	ClientRequestID *string   `gorm:"type:varchar(255);uniqueIndex:idx_user_client_request,where:client_request_id IS NOT NULL" json:"client_request_id,omitempty"`
+	ClientRequestID *string   `gorm:"type:varchar(255);uniqueIndex:idx_user_client_request,priority:2,where:client_request_id IS NOT NULL" json:"client_request_id,omitempty"`
 	CreatedAt       time.Time `gorm:"autoCreateTime" json:"created_at"`
 
 	// Associations

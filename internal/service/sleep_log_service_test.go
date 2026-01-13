@@ -425,3 +425,74 @@ func TestSleepLogService_Create_LongSleepDurations(t *testing.T) {
 		})
 	}
 }
+
+// TestSleepLogService_Create_ClientRequestIDScopedPerUser verifies that the same
+// client_request_id can be reused by different users without being treated as
+// the same request, while idempotency still holds per user.
+func TestSleepLogService_Create_ClientRequestIDScopedPerUser(t *testing.T) {
+	userA := uuid.New()
+	userB := uuid.New()
+
+	userRepo := NewMockUserRepository()
+	userRepo.users[userA] = &domain.User{ID: userA, Timezone: "UTC"}
+	userRepo.users[userB] = &domain.User{ID: userB, Timezone: "UTC"}
+
+	logRepo := NewMockSleepLogRepository()
+	svc := NewSleepLogService(logRepo, userRepo)
+
+	clientReqID := "req-123"
+
+	reqA := &domain.CreateSleepLogRequest{
+		StartAt:         time.Date(2024, 1, 15, 23, 0, 0, 0, time.UTC),
+		EndAt:           time.Date(2024, 1, 16, 7, 0, 0, 0, time.UTC),
+		Quality:         8,
+		Type:            domain.SleepTypeCore,
+		ClientRequestID: strPtr(clientReqID),
+	}
+	reqB := &domain.CreateSleepLogRequest{
+		StartAt:         time.Date(2024, 1, 16, 23, 0, 0, 0, time.UTC),
+		EndAt:           time.Date(2024, 1, 17, 7, 0, 0, 0, time.UTC),
+		Quality:         7,
+		Type:            domain.SleepTypeCore,
+		ClientRequestID: strPtr(clientReqID),
+	}
+
+	// First call for userA should create a new log
+	logA, isExistingA, err := svc.Create(context.Background(), userA, reqA)
+	if err != nil {
+		t.Fatalf("Create() for userA returned error: %v", err)
+	}
+	if isExistingA {
+		t.Fatalf("Create() for userA should not be treated as existing on first call")
+	}
+	if logA == nil || logA.UserID != userA {
+		t.Fatalf("Create() for userA returned invalid log: %+v", logA)
+	}
+
+	// Second call for the same user and same client_request_id should be idempotent
+	logA2, isExistingA2, err := svc.Create(context.Background(), userA, reqA)
+	if err != nil {
+		t.Fatalf("Second Create() for userA returned error: %v", err)
+	}
+	if !isExistingA2 {
+		t.Fatalf("Second Create() for userA should be treated as existing (idempotent)")
+	}
+	if logA2.ID != logA.ID {
+		t.Fatalf("Second Create() for userA returned different log ID: first=%v second=%v", logA.ID, logA2.ID)
+	}
+
+	// Call for a different user with the same client_request_id should create a new log
+	logB, isExistingB, err := svc.Create(context.Background(), userB, reqB)
+	if err != nil {
+		t.Fatalf("Create() for userB returned error: %v", err)
+	}
+	if isExistingB {
+		t.Fatalf("Create() for userB should not be treated as existing when using same client_request_id as another user")
+	}
+	if logB == nil || logB.UserID != userB {
+		t.Fatalf("Create() for userB returned invalid log: %+v", logB)
+	}
+	if logB.ID == logA.ID {
+		t.Fatalf("Create() for userB should produce a different log ID than userA; both are %v", logB.ID)
+	}
+}

@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -60,8 +61,16 @@ func (h *InsightsHandler) GetChronotype(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Parse query parameters
-	windowDays := parseIntParam(r, "window_days", service.DefaultChronotypeWindowDays)
-	minSleeps := parseIntParam(r, "min_sleeps", service.DefaultChronotypeMinSleeps)
+	windowDays, err := parseIntParam(r, "window_days", service.DefaultChronotypeWindowDays)
+	if err != nil {
+		problem.BadRequest(err.Error()).Write(w)
+		return
+	}
+	minSleeps, err := parseIntParam(r, "min_sleeps", service.DefaultChronotypeMinSleeps)
+	if err != nil {
+		problem.BadRequest(err.Error()).Write(w)
+		return
+	}
 
 	// Validate parameters
 	if windowDays < 1 || windowDays > 365 {
@@ -107,7 +116,11 @@ func (h *InsightsHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Parse query parameters
-	windowDays := parseIntParam(r, "window_days", service.DefaultMetricsWindowDays)
+	windowDays, err := parseIntParam(r, "window_days", service.DefaultMetricsWindowDays)
+	if err != nil {
+		problem.BadRequest(err.Error()).Write(w)
+		return
+	}
 
 	// Validate parameters
 	if windowDays < 1 || windowDays > 365 {
@@ -206,7 +219,9 @@ func (h *InsightsHandler) PostFeedback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req FeedbackRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&req); err != nil {
 		problem.BadRequest("Invalid request body").Write(w)
 		return
 	}
@@ -241,14 +256,15 @@ func (h *InsightsHandler) PostFeedback(w http.ResponseWriter, r *http.Request) {
 }
 
 // parseIntParam parses an integer query parameter with a default value.
-func parseIntParam(r *http.Request, name string, defaultValue int) int {
+// It returns an error if the value is present but not a valid integer.
+func parseIntParam(r *http.Request, name string, defaultValue int) (int, error) {
 	val := r.URL.Query().Get(name)
 	if val == "" {
-		return defaultValue
+		return defaultValue, nil
 	}
 	parsed, err := strconv.Atoi(val)
 	if err != nil {
-		return defaultValue
+		return 0, fmt.Errorf("%s must be a valid integer", name)
 	}
-	return parsed
+	return parsed, nil
 }

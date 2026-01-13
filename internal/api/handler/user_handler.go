@@ -34,7 +34,9 @@ func NewUserHandler(service service.UserService) *UserHandler {
 // @Router /users [post]
 func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req domain.CreateUserRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&req); err != nil {
 		problem.BadRequest("Invalid JSON body").Write(w)
 		return
 	}

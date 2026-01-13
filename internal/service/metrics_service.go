@@ -289,10 +289,10 @@ func computeDerivedScores(perSleep domain.PerSleepMetrics, dailyOverall domain.D
 
 	// Overall sleep score: weighted combination
 	// 40% consistency, 30% sufficiency, 30% daily sufficiency
-	scores.OverallSleepScore = math.Round(
-		(scores.ConsistencyScore*0.4+
-			scores.SufficiencyScore*0.3+
-			dailyOverall.DailySufficiencyScore*0.3)*10) / 10
+	overall := (scores.ConsistencyScore*0.4 +
+		scores.SufficiencyScore*0.3 +
+		dailyOverall.DailySufficiencyScore*0.3)
+	scores.OverallSleepScore = clamp(math.Round(overall*10)/10, 0, 100)
 
 	return scores
 }
@@ -339,4 +339,15 @@ func computeStats(values []float64) domain.DescriptiveStats {
 		Min: math.Round(minVal*100) / 100,
 		Max: math.Round(maxVal*100) / 100,
 	}
+}
+
+// clamp restricts a value to the range [min, max].
+func clamp(v, min, max float64) float64 {
+	if v < min {
+		return min
+	}
+	if v > max {
+		return max
+	}
+	return v
 }

@@ -15,6 +15,9 @@ import (
 	"github.com/google/uuid"
 )
 
+// asyncTimeout is the maximum time to wait for async Langfuse API calls.
+const asyncTimeout = 5 * time.Second
+
 // Client is the interface for Langfuse operations.
 type Client interface {
 	// IsEnabled returns true if Langfuse is configured and enabled.
@@ -100,8 +103,6 @@ func (c *client) CreateTrace(ctx context.Context, in TraceInput) (string, error)
 		return "", nil
 	}
 
-	log.Printf("[langfuse] creating trace: name=%s user=%s", in.Name, in.UserID)
-
 	traceID := in.ID
 	if traceID == "" {
 		traceID = uuid.New().String()
@@ -130,12 +131,9 @@ func (c *client) CreateTrace(ctx context.Context, in TraceInput) (string, error)
 		},
 	}
 
-	if err := c.sendBatch(ctx, []ingestionEvent{event}); err != nil {
-		log.Printf("[langfuse] failed to create trace: %v", err)
-		return traceID, err
-	}
+	// Fire async to avoid blocking the request path
+	go c.sendAsync(event, "trace")
 
-	log.Printf("[langfuse] trace created: id=%s", traceID)
 	return traceID, nil
 }
 
@@ -143,8 +141,6 @@ func (c *client) CreateScore(ctx context.Context, in ScoreInput) error {
 	if !c.enabled {
 		return nil
 	}
-
-	log.Printf("[langfuse] creating score: trace=%s name=%s value=%.1f", in.TraceID, in.Name, in.Value)
 
 	event := ingestionEvent{
 		ID:        uuid.New().String(),
@@ -159,12 +155,21 @@ func (c *client) CreateScore(ctx context.Context, in ScoreInput) error {
 		},
 	}
 
-	if err := c.sendBatch(ctx, []ingestionEvent{event}); err != nil {
-		log.Printf("[langfuse] failed to create score: %v", err)
-		return err
-	}
+	// Fire async to avoid blocking the request path
+	go c.sendAsync(event, "score")
 
 	return nil
+}
+
+// sendAsync sends an event asynchronously with a timeout.
+// Errors are logged but not returned since this is fire-and-forget.
+func (c *client) sendAsync(event ingestionEvent, eventType string) {
+	ctx, cancel := context.WithTimeout(context.Background(), asyncTimeout)
+	defer cancel()
+
+	if err := c.sendBatch(ctx, []ingestionEvent{event}); err != nil {
+		log.Printf("[langfuse] async %s send failed: %v", eventType, err)
+	}
 }
 
 func (c *client) sendBatch(ctx context.Context, events []ingestionEvent) error {

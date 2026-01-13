@@ -275,7 +275,7 @@ All errors return `application/problem+json` with:
 - `detail` — Specific error message
 - `errors` — Array of field-level validation errors (when applicable)
 
-> Depending on team conventions, domain errors like `ErrInvalidInput` can also map to HTTP 422. The current service uses 400 for simplicity, but the error surface keeps this flexible.
+> Body/query validation errors (e.g., malformed JSON, out-of-range fields, bad timestamps) use **422 Unprocessable Entity**, while path/format issues (e.g., invalid UUID) and semantic problems (e.g., `end_at` before `start_at`) use **400 Bad Request**. The error shape keeps this flexible if conventions change.
 
 ### 6. Clean Architecture & Observability
 ```

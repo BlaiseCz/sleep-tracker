@@ -84,9 +84,8 @@ func (r *sleepLogRepository) List(ctx context.Context, userID uuid.UUID, filter 
 	return logs, nil
 }
 
-// HasOverlap checks if there's an overlapping sleep period
-// For CORE: checks overlap with any CORE sleep
-// For NAP: checks overlap with CORE sleep only
+// HasOverlap checks if there's any overlapping sleep period for the user,
+// regardless of sleep type. Any intersecting range is considered a conflict.
 func (r *sleepLogRepository) HasOverlap(ctx context.Context, userID uuid.UUID, startAt, endAt time.Time, sleepType domain.SleepType) (bool, error) {
 	var count int64
 	if err := r.db.WithContext(ctx).
@@ -119,8 +118,8 @@ func (r *sleepLogRepository) Update(ctx context.Context, log *domain.SleepLog) e
 	return r.db.WithContext(ctx).Save(log).Error
 }
 
-// HasOverlapExcluding checks for overlapping sleep periods, excluding a specific log ID
-// Used for updates to avoid self-overlap detection
+// HasOverlapExcluding checks for overlapping sleep periods for the user,
+// excluding a specific log ID. Used for updates to avoid self-overlap detection.
 func (r *sleepLogRepository) HasOverlapExcluding(ctx context.Context, userID uuid.UUID, excludeID uuid.UUID, startAt, endAt time.Time, sleepType domain.SleepType) (bool, error) {
 	var count int64
 	if err := r.db.WithContext(ctx).
