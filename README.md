@@ -70,29 +70,6 @@ make docker-dev
 
 ## API Endpoints
 
-| Method | Env Var | Description |
-|---------|-------------|
-| `LANGFUSE_BASE_URL` | Base URL to a Langfuse instance (e.g. `http://localhost:3001`) |
-| `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` | API credentials for traces & prompts |
-| `LANGFUSE_ENV` | Environment tag shown in Langfuse (e.g. `development`) |
-| `LANGFUSE_PROMPT_NAME` | Optional prompt slug to fetch (e.g. `sleep-insights/system`) |
-| `LANGFUSE_PROMPT_LABEL` | Prompt label to resolve (defaults to `production`) |
-| `LANGFUSE_PROMPT_SAVE_PATH` | Path to cache the prompt locally (used as offline fallback) |
-
-#### Prompt workflow
-
-1. **Create/manage your prompt** in the Langfuse UI (`Prompt Management > Prompts`). Give it a stable slug and assign the `production` label (or any label you configure via `LANGFUSE_PROMPT_LABEL`).
-2. **Configure env vars**:
-   ```bash
-   LANGFUSE_PROMPT_NAME=sleep-tracker/system
-   LANGFUSE_PROMPT_LABEL=production
-   LANGFUSE_PROMPT_SAVE_PATH=./notes/prompts/system_prompt.txt
-   ```
-3. The API downloads the prompt via the Langfuse Public API and caches it to `LANGFUSE_PROMPT_SAVE_PATH`. While Langfuse is reachable, the prompt is re-fetched automatically (default: every 30s) so you can tweak copy live without restarting the API.
-4. If Langfuse is unavailable, the cached file is used. When both Langfuse and the cache are unavailable, the built‑in default prompt from `internal/llm/openai_client.go` is used.
-
-This lets you roll out prompt tweaks directly from Langfuse while still having deterministic local development (commit the cached `.txt` file if you want reproducible prompts for teammates).
-
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `POST` | `/v1/users` | Create a new user |
@@ -100,8 +77,12 @@ This lets you roll out prompt tweaks directly from Langfuse while still having d
 | `POST` | `/v1/users/{userId}/sleep-logs` | Create a sleep log |
 | `GET` | `/v1/users/{userId}/sleep-logs` | List sleep logs (paginated) |
 | `PUT` | `/v1/users/{userId}/sleep-logs/{logId}` | Update a sleep log |
+| `GET` | `/v1/users/{userId}/sleep/chronotype` | Get user chronotype |
+| `GET` | `/v1/users/{userId}/sleep/metrics` | Get sleep metrics |
+| `GET` | `/v1/users/{userId}/sleep/insights` | Get LLM-powered sleep insights (requires `OPENAI_API_KEY`) |
+| `POST` | `/v1/users/{userId}/sleep/insights/feedback` | Submit feedback on insights (sends Langfuse score when enabled) |
 
-**Interactive documentation:** http://localhost:8080/swagger/index.html
+**Interactive documentation (source of truth):** http://localhost:8080/swagger/index.html
 
 ---
 
@@ -348,8 +329,44 @@ sleep-tracker/
 | `DATABASE_URL` | PostgreSQL connection string | — |
 | `LOG_LEVEL` | Logging level (debug, info, warn, error) | `info` |
 | `SEED` | `true` to load sample users & logs on startup | `false` |
-| `OPENAI_API_KEY` | Required for `/sleep/insights` when using Docker | — |
+| `OPENAI_API_KEY` | Required for `/sleep/insights` | — |
 | `OPENAI_SLEEP_INSIGHTS_MODEL` | Optional override of the OpenAI model | `gpt-4o-mini` |
+| `LANGFUSE_BASE_URL` | Base URL to a Langfuse instance (e.g. `http://localhost:3001` on host, `http://host.docker.internal:3001` inside Docker) | `""` (disabled) |
+| `LANGFUSE_PUBLIC_KEY` | Langfuse public API key (for tracing & prompt loading) | `""` |
+| `LANGFUSE_SECRET_KEY` | Langfuse secret API key | `""` |
+| `LANGFUSE_ENV` | Environment tag shown in Langfuse (e.g. `development`) | `development` |
+| `LANGFUSE_PROMPT_NAME` | Optional prompt slug to fetch (e.g. `sleep-tracker/system`) | `""` |
+| `LANGFUSE_PROMPT_LABEL` | Prompt label to resolve | `production` |
+| `LANGFUSE_PROMPT_SAVE_PATH` | Path to cache the prompt locally (used as offline fallback) | `""` (see `.env.example`) |
+
+### Langfuse prompt workflow (optional)
+
+1. **Create/manage your prompt** in the Langfuse UI (`Prompt Management > Prompts`). Give it a stable slug and assign the `production` label (or any label you configure via `LANGFUSE_PROMPT_LABEL`).
+2. **Configure env vars**:
+   ```bash
+   LANGFUSE_PROMPT_NAME=sleep-tracker/system
+   LANGFUSE_PROMPT_LABEL=production
+   LANGFUSE_PROMPT_SAVE_PATH=./notes/prompts/system_prompt.txt
+   ```
+3. The API downloads the prompt via the Langfuse Public API and caches it to `LANGFUSE_PROMPT_SAVE_PATH`. While Langfuse is reachable, the prompt is re-fetched automatically (default: every 30s) so you can tweak copy live without restarting the API.
+4. If Langfuse is unavailable, the cached file is used. When both Langfuse and the cache are unavailable, the built‑in default prompt from `internal/llm/openai_client.go` is used.
+
+This lets you roll out prompt tweaks directly from Langfuse while still having deterministic local development (commit the cached `.txt` file if you want reproducible prompts for teammates).
+
+### Running Langfuse locally (optional)
+
+To get full observability and prompt management:
+
+1. **Start the Langfuse stack** from the project root:
+   ```bash
+   docker compose -f langfuse-docker-compose.yml up -d
+   ```
+2. Open **http://localhost:3001** in your browser and create or log into your Langfuse account.
+3. In Langfuse, create a project and API keys, then copy the public/secret keys into your `.env` as `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY`.
+4. (Optional) Test connectivity from this repo:
+   ```bash
+   make langfuse-test
+   ```
 
 > **Security tip:** Commit `docker-compose.yml.example`, keep your real `docker-compose.yml` gitignored, and rely on environment variables (or a secret manager) so API keys never land in version control.
 
