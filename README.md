@@ -50,6 +50,28 @@ make docker-down
 
 The API will be available at **http://localhost:8080**
 
+### Helper scripts & recommended order (with Langfuse)
+
+If you want Langfuse observability and LLM-powered insights:
+
+1. Start the Langfuse stack from the project root:
+   ```bash
+   scripts/langfuse_stack.sh start
+   # or: docker compose -f langfuse-docker-compose.yml up -d
+   ```
+2. Create and configure your `.env` (once):
+   ```bash
+   cp .env.example .env
+   # Edit .env and set at least OPENAI_API_KEY and LANGFUSE_* values
+   ```
+3. Start or reset the Sleep Tracker stack:
+   ```bash
+   scripts/fresh_start.sh
+   # This prepares .env/docker-compose.yml templates and runs docker compose up -d --build
+   ```
+
+You can re-run `scripts/fresh_start.sh` whenever you want a clean restart; it will not overwrite `.env` unless you pass `--force`.
+
 ### Local Development
 
 ```bash
@@ -359,7 +381,8 @@ To get full observability and prompt management:
 
 1. **Start the Langfuse stack** from the project root:
    ```bash
-   docker compose -f langfuse-docker-compose.yml up -d
+   scripts/langfuse_stack.sh start
+   # or: docker compose -f langfuse-docker-compose.yml up -d
    ```
 2. Open **http://localhost:3001** in your browser and create or log into your Langfuse account.
 3. In Langfuse, create a project and API keys, then copy the public/secret keys into your `.env` as `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY`.
